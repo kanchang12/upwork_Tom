@@ -73,7 +73,7 @@ def fuzzy_search(query, target_list):
 def rephrase_command(user_command):
     prompt = f"User: \"{user_command}\"\nAI: Search for:"
     response = openai.ChatCompletion.create(
-        model="gpt-3.5-turbo",
+        model="gpt-3.5-turbo-16k",
         messages=[
             {"role": "system", "content": "You are a helpful assistant."},
             {"role": "user", "content": prompt}
@@ -83,6 +83,7 @@ def rephrase_command(user_command):
         stop="\n"
     )
     return response.choices[0].message['content'].strip()
+
 
 def search_answer(user_input, answer_json):
     # Search for the user input in the answer JSON
@@ -120,7 +121,7 @@ def process_text():
             else:
                 # Continue with the conversation using OpenAI's chat completion
                 response = openai.ChatCompletion.create(
-                    model="gpt-3.5-turbo",
+                    model="gpt-3.5-turbo-16k",
                     messages=conversation,
                     max_tokens=150
                 )
@@ -130,6 +131,7 @@ def process_text():
 
         except Exception as e:
             return jsonify({"error": str(e)}), 400
+
 
 @app.route('/login/zoho')
 def zoho_login():
