@@ -72,17 +72,21 @@ def fuzzy_search(query, target_list):
 
 def rephrase_command(user_command):
     prompt = f"User: \"{user_command}\"\nAI: Search for:"
-    response = openai.ChatCompletion.create(
-        model="gpt-3.5-turbo-16k",
-        messages=[
-            {"role": "system", "content": "You are a helpful assistant."},
-            {"role": "user", "content": prompt}
-        ],
-        max_tokens=30,
-        temperature=0.5,
-        stop="\n"
-    )
-    return response.choices[0].message['content'].strip()
+    try:
+        response = openai.ChatCompletion.create(
+            model="gpt-3.5-turbo-16k",
+            messages=[
+                {"role": "system", "content": "You are a helpful assistant."},
+                {"role": "user", "content": prompt}
+            ],
+            max_tokens=30,
+            temperature=0.5,
+            stop="\n"
+        )
+        print(response)  # Debugging: print the response
+        return response.choices[0].message['content'].strip()
+    except Exception as e:
+        return f"Error: {str(e)}"
 
 
 def search_answer(user_input, answer_json):
@@ -111,6 +115,11 @@ def process_text():
 
             # Rephrase the user command using OpenAI
             rephrased_command = rephrase_command(user_message)
+            print(rephrased_command)  # Debugging: print the rephrased command
+
+            # Check if rephrased_command contains an error
+            if rephrased_command.startswith("Error:"):
+                return jsonify({'answer': rephrased_command})
 
             # Extract the variable from the rephrased command
             variable = rephrased_command.split(":")[1].strip()
@@ -125,7 +134,11 @@ def process_text():
                     messages=conversation,
                     max_tokens=150
                 )
-                response_text = response['choices'][0]['message']['content']
+                print(response)  # Debugging: print the response
+                if response and response.choices:
+                    response_text = response.choices[0].message['content']
+                else:
+                    response_text = "No response from the model."
 
             return jsonify({'answer': response_text})
 
