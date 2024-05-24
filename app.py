@@ -73,7 +73,7 @@ def rephrase_command(user_command):
     prompt = f"User: \"{user_command}\"\nAI:"
     # Continue with the conversation using OpenAI's chat completion
     response = openai.ChatCompletion.create(
-        model="gpt-3.5-turbo-16k",
+        model="text-davinci-003",
         messages=conversation,
         max_tokens=150,
         stop="\n"
