@@ -5,6 +5,7 @@ import requests
 from fuzzywuzzy import fuzz
 
 app = Flask(__name__)
+app.secret_key = os.getenv('FLASK_SECRET_KEY', 'your_secret_key')
 
 # Set up OpenAI API key from environment variable
 openai.api_key = os.getenv('OPENAI_API_KEY')
@@ -71,11 +72,11 @@ def fuzzy_search(query, target_list):
 
 def rephrase_command(user_command):
     prompt = f"User: \"{user_command}\"\nAI:"
-    # Continue with the conversation using OpenAI's chat completion
-    response = openai.ChatCompletion.create(
-        model="text-davinci-003",
-        messages=conversation,
-        max_tokens=150,
+    response = openai.Completion.create(
+        engine="text-davinci-003",
+        prompt=prompt,
+        max_tokens=30,
+        temperature=0.5,
         stop="\n"
     )
     return response.choices[0].text.strip()
@@ -97,6 +98,11 @@ def process_text():
     if request.method == "POST":
         try:
             conversation = request.json.get('conversation', [])
+            
+            # Construct the initial system message based on the preset instruction
+            if not any(msg['role'] == 'system' for msg in conversation):
+                conversation.insert(0, {"role": "system", "content": preset_instruction})
+
             user_message = conversation[-1]['content']
 
             # Rephrase the user command using OpenAI
