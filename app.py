@@ -71,15 +71,18 @@ def fuzzy_search(query, target_list):
     return best_match
 
 def rephrase_command(user_command):
-    prompt = f"User: \"{user_command}\"\nAI:"
-    response = openai.Completion.create(
-        engine="text-davinci-003",
-        prompt=prompt,
+    prompt = f"User: \"{user_command}\"\nAI: Search for:"
+    response = openai.ChatCompletion.create(
+        model="gpt-3.5-turbo",
+        messages=[
+            {"role": "system", "content": "You are a helpful assistant."},
+            {"role": "user", "content": prompt}
+        ],
         max_tokens=30,
         temperature=0.5,
         stop="\n"
     )
-    return response.choices[0].text.strip()
+    return response.choices[0].message['content'].strip()
 
 def search_answer(user_input, answer_json):
     # Search for the user input in the answer JSON
@@ -117,7 +120,7 @@ def process_text():
             else:
                 # Continue with the conversation using OpenAI's chat completion
                 response = openai.ChatCompletion.create(
-                    model="gpt-3.5-turbo-16k",
+                    model="gpt-3.5-turbo",
                     messages=conversation,
                     max_tokens=150
                 )
