@@ -106,10 +106,12 @@ def process_text():
                 return jsonify({'answer': "Error: Empty rephrased command."})
             elif rephrased_command.startswith("Error:"):
                 return jsonify({'answer': rephrased_command})
+                
 
             # Extract the variable from the rephrased command
             try:
-                variable = rephrased_command.split(":")[1].strip()
+                #variable = rephrased_command.split(":")[1].strip()
+                variable = rephrased_command
             except IndexError:
                 return jsonify({'answer': "Error: Unable to parse the rephrased command."})
 
