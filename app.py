@@ -2,9 +2,10 @@ import os
 from flask import Flask, render_template, request, jsonify, redirect, session, url_for
 import openai
 import requests
+from fuzzywuzzy import fuzz
 
 app = Flask(__name__)
-#app.secret_key = os.getenv('FLASK_SECRET_KEY', 'your_secret_key')
+# app.secret_key = os.getenv('FLASK_SECRET_KEY', 'your_secret_key')
 
 # Set up OpenAI API key from environment variable
 openai.api_key = os.getenv('OPENAI_API_KEY')
@@ -18,7 +19,7 @@ ZOHO_TOKEN_URL = 'https://accounts.zoho.com/oauth/v2/token'
 ZOHO_SCOPES = 'ZohoMail.messages.READ'
 
 # Preset instruction for the agent
-preset_instruction = "Consider yourself as executive assistant of Mr Tom. You will receive the command from him and search the mail box kanchan@ikanchan.com to returnn the data. If nothing is found you will inform that. If more than one instance is found, give the latest one, unless otherwise mentioned."
+preset_instruction = "Consider yourself as executive assistant of Mr Tom. You will receive the command from him and search the mail box kanchan@ikanchan.com to return the data. If nothing is found you will inform that. If more than one instance is found, give the latest one, unless otherwise mentioned."
 
 @app.route("/")
 def index():
@@ -53,6 +54,16 @@ def process_text():
 
         except Exception as e:
             return jsonify({"error": str(e)}), 400
+
+def fuzzy_search(query, target_list):
+    max_score = 0
+    best_match = None
+    for target in target_list:
+        score = fuzz.partial_ratio(query.lower(), target.lower())
+        if score > max_score:
+            max_score = score
+            best_match = target
+    return best_match
 
 @app.route('/login/zoho')
 def zoho_login():
@@ -101,3 +112,4 @@ if __name__ == "__main__":
     host = '0.0.0.0'
     port = int(os.environ.get('PORT', 5000))
     app.run(host=host, port=port)
+
