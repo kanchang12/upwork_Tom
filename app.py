@@ -83,13 +83,13 @@ def rephrase_command(user_command):
             temperature=0.5,
             stop="\n"
         )
-        print(response)  # Debugging: print the response
-        # Return the raw response for debugging purposes
-        return response
-        # Uncomment the following line after debugging
-        # return response.choices[0].message['content'].strip()
+        # Print the entire response for debugging purposes
+        print(response)
+        # Return the rephrased command
+        return response['choices'][0]['message']['content'].strip()
     except Exception as e:
         return f"Error: {str(e)}"
+
 
 
 
@@ -122,34 +122,33 @@ def process_text():
             print(rephrased_command)  # Debugging: print the rephrased command
 
             # Check if rephrased_command contains an error
-            if isinstance(rephrased_command, str) and rephrased_command.startswith("Error:"):
+            if rephrased_command.startswith("Error:"):
                 return jsonify({'answer': rephrased_command})
 
-            # Uncomment the following lines after debugging
-            # # Extract the variable from the rephrased command
-            # variable = rephrased_command['choices'][0]['message']['content'].split(":")[1].strip()
+            # Extract the variable from the rephrased command
+            variable = rephrased_command.split(":")[1].strip()
 
-            # email_data = fetch_email_data(variable)
-            # if email_data:
-            #     response_text = email_data
-            # else:
-            #     # Continue with the conversation using OpenAI's chat completion
-            #     response = openai.ChatCompletion.create(
-            #         model="gpt-3.5-turbo-16k",
-            #         messages=conversation,
-            #         max_tokens=150
-            #     )
-            #     print(response)  # Debugging: print the response
-            #     if response and response.choices:
-            #         response_text = response.choices[0].message['content']
-            #     else:
-            #         response_text = "No response from the model."
+            email_data = fetch_email_data(variable)
+            if email_data:
+                response_text = email_data
+            else:
+                # Continue with the conversation using OpenAI's chat completion
+                response = openai.ChatCompletion.create(
+                    model="gpt-3.5-turbo-16k",
+                    messages=conversation,
+                    max_tokens=150
+                )
+                print(response)  # Debugging: print the response
+                if response and response['choices']:
+                    response_text = response['choices'][0]['message']['content']
+                else:
+                    response_text = "No response from the model."
 
-            # Return the raw rephrased command for debugging purposes
-            return jsonify({'answer': rephrased_command})
+            return jsonify({'answer': response_text})
 
         except Exception as e:
             return jsonify({"error": str(e)}), 400
+
 
 
 
