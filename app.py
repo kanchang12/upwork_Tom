@@ -56,9 +56,22 @@ def rephrase_command(user_command):
         return f"Error: {str(e)}"
 
 def fetch_email_data(search_term):
-    access_token = session.get('access_token')
+    # Zoho OAuth2 configuration
+    ZOHO_CLIENT_ID = os.getenv('ZOHO_CLIENT_ID')
+    ZOHO_CLIENT_SECRET = os.getenv('ZOHO_CLIENT_SECRET')
+
+    # Get access token using client ID and client secret
+    token_data = {
+        'client_id': ZOHO_CLIENT_ID,
+        'client_secret': ZOHO_CLIENT_SECRET,
+        'grant_type': 'client_credentials'
+    }
+    token_response = requests.post(ZOHO_TOKEN_URL, data=token_data)
+    tokens = token_response.json()
+    access_token = tokens.get('access_token')
+
     if not access_token:
-        return "Zoho authentication required. Please log in to Zoho."
+        return "Zoho authentication failed. Unable to obtain access token."
 
     headers = {
         'Authorization': f'Zoho-oauthtoken {access_token}'
@@ -83,6 +96,7 @@ def fetch_email_data(search_term):
             return "No relevant emails found."
     else:
         return f"Error fetching emails: {response.status_code}"
+
 
 @app.route("/process_text", methods=["POST"])
 def process_text():
