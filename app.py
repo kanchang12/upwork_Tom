@@ -4,7 +4,7 @@ import openai
 import requests
 
 app = Flask(__name__)
-app.secret_key = os.getenv('FLASK_SECRET_KEY', 'your_secret_key')
+#app.secret_key = os.getenv('FLASK_SECRET_KEY', 'your_secret_key')
 
 # Set up OpenAI API key from environment variable
 openai.api_key = os.getenv('OPENAI_API_KEY')
@@ -64,7 +64,7 @@ def fetch_email_data(search_term):
         'Authorization': f'Zoho-oauthtoken {access_token}'
     }
     # Assuming 'account_id' is known and valid; replace with actual account_id
-    account_id = 'your_account_id'
+    account_id = '60018950613'
     search_url = f'https://mail.zoho.com/api/accounts/{account_id}/messages/search?search_key={search_term}'
     response = requests.get(search_url, headers=headers)
     
@@ -83,24 +83,28 @@ def fetch_email_data(search_term):
             return "No relevant emails found."
     else:
         return f"Error fetching emails: {response.status_code}"
+
 @app.route("/process_text", methods=["POST"])
 def process_text():
     if request.method == "POST":
         try:
             conversation = request.json.get('conversation', [])
-            
-            # Construct the initial system message based on the preset instruction
-            if not any(msg['role'] == 'system' for msg in conversation):
-                conversation.insert(0, {"role": "system", "content": preset_instruction})
 
-            user_message = conversation[-1]['content']
+            # Check if conversation is empty or doesn't contain user messages
+            if not conversation or not any(msg['role'] == 'user' for msg in conversation):
+                return jsonify({'answer': "Error: Conversation is empty or doesn't contain user messages."})
+
+            # Get the last user message from the conversation
+            user_message = next(msg['content'] for msg in reversed(conversation) if msg['role'] == 'user')
 
             # Rephrase the user command using OpenAI
             rephrased_command = rephrase_command(user_message)
             print("Rephrased Command:", rephrased_command)  # Debugging: print the rephrased command
 
-            # Check if rephrased_command contains an error
-            if rephrased_command.startswith("Error:"):
+            # Check if rephrased_command is empty or contains an error
+            if not rephrased_command:
+                return jsonify({'answer': "Error: Empty rephrased command."})
+            elif rephrased_command.startswith("Error:"):
                 return jsonify({'answer': rephrased_command})
 
             # Extract the variable from the rephrased command
@@ -129,6 +133,7 @@ def process_text():
 
         except Exception as e:
             return jsonify({"error": str(e)}), 400
+
 
 @app.route('/login/zoho')
 def zoho_login():
