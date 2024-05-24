@@ -2,7 +2,6 @@ import os
 from flask import Flask, render_template, request, jsonify, redirect, session, url_for
 import openai
 import requests
-from fuzzywuzzy import fuzz
 
 app = Flask(__name__)
 app.secret_key = os.getenv('FLASK_SECRET_KEY', 'your_secret_key')
@@ -24,52 +23,15 @@ When he will talk to you, you will ask him to verify the passcode. If he succeed
 You have given exclusive access to zoho email box kanchan@ikanchan.com. The client App has been created and client id and client secret is integrated with your backend.
 For this email, you are directed to read email body, read pdf attachment and access like a super admin.
 If Mr. Tom asked you to find a particular email, you will search and return the proper data.
-Remember, the account access has been exclusively given to you to act as executive assistant
-If you can't find anything, you will reply that
-If you find many, you will return the latest one
+Remember, the account access has been exclusively given to you to act as executive assistant.
+If you can't find anything, you will reply that.
+If you find many, you will return the latest one.
 Also, if you are asked to fetch a data, you will search and respond automatically.
-Your session should run untill you are responding"""
+Your session should run until you are responding."""
 
-# Define function to fetch email data
-def fetch_email_data(query):
-    access_token = session.get('access_token')
-    if not access_token:
-        return {"error": "Zoho authentication required. Please log in to Zoho."}
-
-    headers = {
-        'Authorization': f'Zoho-oauthtoken {access_token}'
-    }
-    # Use Zoho Mail API to search emails
-    search_url = f'https://mail.zoho.com/api/accounts/{{account_id}}/messages/search?search_key={query}'
-    response = requests.get(search_url, headers=headers)
-    
-    if response.status_code == 200:
-        emails = response.json().get('data', [])
-        email_data = []
-        for email in emails:
-            email_details = {
-                'subject': email.get('subject', ''),
-                'sender': email.get('from', ''),
-                'body': email.get('body', ''),
-                'datetime': email.get('datetime', ''),
-                'attachments': email.get('attachments', [])
-            }
-            email_data.append(email_details)
-        return {"emails": email_data}
-    else:
-        return {"error": f"Error fetching emails: {response.status_code}"}
-
-# Define function for fuzzy search
-def fuzzy_search(query, target_list):
-    max_score = 0
-    best_match = None
-    for target in target_list:
-        score = fuzz.partial_ratio(query.lower(), target.lower())
-        if score > max_score:
-            max_score = score
-            best_match = target
-    return best_match
-
+@app.route("/")
+def index():
+    return render_template("index.html")
 def rephrase_command(user_command):
     prompt = f"User: \"{user_command}\"\nAI: Search for:"
     try:
@@ -81,30 +43,46 @@ def rephrase_command(user_command):
             ],
             max_tokens=30,
             temperature=0.5,
-            stop="\n"
+            stop=["\n"]
         )
         # Print the entire response for debugging purposes
-        print(response)
-        # Return the rephrased command
-        return response['choices'][0]['message']['content'].strip()
+        print("Rephrase Command Response:", response)
+        # Ensure choices are available before accessing
+        if response['choices'] and len(response['choices']) > 0:
+            return response['choices'][0]['message']['content'].strip()
+        else:
+            return "Error: No choices in response"
     except Exception as e:
         return f"Error: {str(e)}"
 
+def fetch_email_data(search_term):
+    access_token = session.get('access_token')
+    if not access_token:
+        return "Zoho authentication required. Please log in to Zoho."
 
-
-
-def search_answer(user_input, answer_json):
-    # Search for the user input in the answer JSON
-    if user_input in answer_json:
-        return answer_json[user_input]
+    headers = {
+        'Authorization': f'Zoho-oauthtoken {access_token}'
+    }
+    # Assuming 'account_id' is known and valid; replace with actual account_id
+    account_id = 'your_account_id'
+    search_url = f'https://mail.zoho.com/api/accounts/{account_id}/messages/search?search_key={search_term}'
+    response = requests.get(search_url, headers=headers)
+    
+    if response.status_code == 200:
+        emails = response.json().get('data', [])
+        if emails:
+            latest_email = emails[0]  # Assuming the first email in the response is the latest one
+            return {
+                "subject": latest_email['subject'],
+                "sender": latest_email['from']['address'],
+                "body": latest_email['snippet'],
+                "date": latest_email['date']
+                # Add more fields as required
+            }
+        else:
+            return "No relevant emails found."
     else:
-        return "No relevant information found."
-
-# Define Flask routes
-@app.route("/")
-def index():
-    return render_template("index.html")
-
+        return f"Error fetching emails: {response.status_code}"
 @app.route("/process_text", methods=["POST"])
 def process_text():
     if request.method == "POST":
@@ -119,14 +97,17 @@ def process_text():
 
             # Rephrase the user command using OpenAI
             rephrased_command = rephrase_command(user_message)
-            print(rephrased_command)  # Debugging: print the rephrased command
+            print("Rephrased Command:", rephrased_command)  # Debugging: print the rephrased command
 
             # Check if rephrased_command contains an error
             if rephrased_command.startswith("Error:"):
                 return jsonify({'answer': rephrased_command})
 
             # Extract the variable from the rephrased command
-            variable = rephrased_command.split(":")[1].strip()
+            try:
+                variable = rephrased_command.split(":")[1].strip()
+            except IndexError:
+                return jsonify({'answer': "Error: Unable to parse the rephrased command."})
 
             email_data = fetch_email_data(variable)
             if email_data:
@@ -138,7 +119,7 @@ def process_text():
                     messages=conversation,
                     max_tokens=150
                 )
-                print(response)  # Debugging: print the response
+                print("Chat Completion Response:", response)  # Debugging: print the response
                 if response and response['choices']:
                     response_text = response['choices'][0]['message']['content']
                 else:
@@ -148,9 +129,6 @@ def process_text():
 
         except Exception as e:
             return jsonify({"error": str(e)}), 400
-
-
-
 
 @app.route('/login/zoho')
 def zoho_login():
