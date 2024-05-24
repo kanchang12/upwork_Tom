@@ -71,7 +71,7 @@ def fuzzy_search(query, target_list):
 
 def rephrase_command(user_command):
     prompt = f"User: \"{user_command}\"\nAI:"
-    response = openai.Completion.create(
+    response = openai.ChatCompletion.create(
         engine="gpt-3.5-turbo-16k",
         prompt=prompt,
         max_tokens=30,
