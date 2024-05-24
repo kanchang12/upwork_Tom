@@ -60,25 +60,27 @@ def fetch_email_data(search_term):
     ZOHO_CLIENT_ID = os.getenv('ZOHO_CLIENT_ID')
     ZOHO_CLIENT_SECRET = os.getenv('ZOHO_CLIENT_SECRET')
 
-    # Get access token using client ID and client secret
+    # Step 1: Obtain access token
     token_data = {
         'client_id': ZOHO_CLIENT_ID,
         'client_secret': ZOHO_CLIENT_SECRET,
-        'grant_type': 'client_credentials'
+        'grant_type': 'client_credentials',
+        'scope': 'ZohoMail.messages.READ',
+        'soid': 'ZohoMail.60018950613'  # Replace with your service name and zsoid
     }
     token_response = requests.post(ZOHO_TOKEN_URL, data=token_data)
-    tokens = token_response.json()
-    access_token = tokens.get('access_token')
+    if token_response.status_code != 200:
+        return "Error obtaining access token."
 
+    access_token = token_response.json().get('access_token')
     if not access_token:
-        return "Zoho authentication failed. Unable to obtain access token."
+        return "Unable to obtain access token."
 
+    # Step 2: Use access token to make API calls
     headers = {
-        'Authorization': f'Zoho-oauthtoken {access_token}'
+        'Authorization': f'Bearer {access_token}'
     }
-    # Assuming 'account_id' is known and valid; replace with actual account_id
-    account_id = '60018950613'
-    search_url = f'https://mail.zoho.com/api/accounts/{account_id}/messages/search?search_key={search_term}'
+    search_url = f'https://mail.zoho.com/api/accounts/{{account_id}}/messages/search?search_key={search_term}'
     response = requests.get(search_url, headers=headers)
     
     if response.status_code == 200:
