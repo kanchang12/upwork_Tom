@@ -55,32 +55,21 @@ def rephrase_command(user_command):
     except Exception as e:
         return f"Error: {str(e)}"
 
+import os
+import requests
+
 def fetch_email_data(search_term):
     # Zoho OAuth2 configuration
     ZOHO_CLIENT_ID = os.getenv('ZOHO_CLIENT_ID')
     ZOHO_CLIENT_SECRET = os.getenv('ZOHO_CLIENT_SECRET')
+    ZOHO_ACCOUNT_ID = '60018950613'  # Replace with your Zoho Mail account ID
 
-    # Step 1: Obtain access token
-    token_data = {
-        'client_id': ZOHO_CLIENT_ID,
-        'client_secret': ZOHO_CLIENT_SECRET,
-        'grant_type': 'client_credentials',
-        'scope': 'ZohoMail.messages.READ',
-        'soid': 'ZohoMail.60018950613'  # Replace with your service name and zsoid
-    }
-    token_response = requests.post(ZOHO_TOKEN_URL, data=token_data)
-    if token_response.status_code != 200:
-        return "Error obtaining access token."
-
-    access_token = token_response.json().get('access_token')
-    if not access_token:
-        return "Unable to obtain access token."
-
-    # Step 2: Use access token to make API calls
+    # Make API call to fetch email data
     headers = {
-        'Authorization': f'Bearer {access_token}'
+        'X-ZOHO-CLIENT-ID': ZOHO_CLIENT_ID,
+        'X-ZOHO-CLIENT-SECRET': ZOHO_CLIENT_SECRET
     }
-    search_url = f'https://mail.zoho.com/api/accounts/{{account_id}}/messages/search?search_key={search_term}'
+    search_url = f'https://mail.zoho.in/api/accounts/{ZOHO_ACCOUNT_ID}/messages/search?search_key={search_term}'
     response = requests.get(search_url, headers=headers)
     
     if response.status_code == 200:
@@ -98,6 +87,7 @@ def fetch_email_data(search_term):
             return "No relevant emails found."
     else:
         return f"Error fetching emails: {response.status_code}"
+
 
 
 @app.route("/process_text", methods=["POST"])
