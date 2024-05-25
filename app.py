@@ -30,6 +30,10 @@ If you find many, you will return the latest one
 Also, if you are asked to fetch a data, you will search and respond automatically.
 Your session should run untill you are responding"""
 
+# Function to display HTML message indicating function call
+def display_message(message):
+    return f"<div style='color: blue;'>{message} function is now called</div>"
+
 @app.route("/")
 def index():
     return render_template("index.html")
@@ -39,12 +43,15 @@ def process_text():
     if request.method == "POST":
         try:
             conversation = request.json.get('conversation', [])
+            user_message = conversation[-1]['content']
+            # Display message indicating function call
+            html_message = display_message("process_text")
+            conversation.append({"role": "system", "content": html_message})
             
             # Construct the initial system message based on the preset instruction
             if not any(msg['role'] == 'system' for msg in conversation):
                 conversation.insert(0, {"role": "system", "content": preset_instruction})
 
-            user_message = conversation[-1]['content']
             if "invoice" in user_message.lower():
                 email_data = search_emails(user_message)
                 response_text = email_data if email_data else "No relevant emails found."
@@ -65,6 +72,10 @@ def process_text():
             return jsonify({"error": str(e)}), 400
 
 def fuzzy_search(query, target_list):
+    # Display message indicating function call
+    html_message = display_message("fuzzy_search")
+    conversation.append({"role": "system", "content": html_message})
+    
     max_score = 0
     best_match = None
     for target in target_list:
@@ -76,11 +87,18 @@ def fuzzy_search(query, target_list):
 
 @app.route('/login/zoho')
 def zoho_login():
+    # Display message indicating function call
+    html_message = display_message("zoho_login")
+    conversation.append({"role": "system", "content": html_message})
+    
     auth_url = f'{ZOHO_AUTHORIZATION_URL}?response_type=code&client_id={ZOHO_CLIENT_ID}&redirect_uri={ZOHO_REDIRECT_URI}&scope={ZOHO_SCOPES}'
     return redirect(auth_url)
-"""
 @app.route('/zoho/callback')
 def zoho_callback():
+    # Display message indicating function call
+    html_message = display_message("zoho_callback")
+    conversation.append({"role": "system", "content": html_message})
+
     code = request.args.get('code')
     token_data = {
         'code': code,
@@ -94,18 +112,20 @@ def zoho_callback():
     session['access_token'] = tokens['access_token']
     session['refresh_token'] = tokens['refresh_token']
     return redirect(url_for('index'))
-"""
-import requests
 
 def authenticate_user_session():
+    # Display message indicating function call
+    html_message = display_message("authenticate_user_session")
+    conversation.append({"role": "system", "content": html_message})
+
     # Step 1: Get the code
     auth_url = "https://accounts.zoho.com/oauth/v2/auth"
     auth_params = {
         "scope": "ZohoMail.messages.READ",
-        "client_id": "1000.ZCNMPBP0S2H5KC9A3SUUMUEBB1W4RK",
+        "client_id": ZOHO_CLIENT_ID,
         "response_type": "code",
         "access_type": "offline",
-        "redirect_uri": "https://scared-terrijo-webpagegem-c993c1c0.koyeb.app/"
+        "redirect_uri": ZOHO_REDIRECT_URI
     }
     auth_response = requests.get(auth_url, params=auth_params)
     code = auth_response.json()['code']  # Extract the code from the response
@@ -115,9 +135,9 @@ def authenticate_user_session():
     token_data = {
         "code": code,
         "grant_type": "authorization_code",
-        "client_id": "1000.ZCNMPBP0S2H5KC9A3SUUMUEBB1W4RK",
-        "client_secret": "619c08c85dc95e7015b2f18045bf15c23812fff88d",
-        "redirect_uri": "https://scared-terrijo-webpagegem-c993c1c0.koyeb.app/",
+        "client_id": ZOHO_CLIENT_ID,
+        "client_secret": ZOHO_CLIENT_SECRET,
+        "redirect_uri": ZOHO_REDIRECT_URI,
         "scope": "ZohoMail.messages.READ"
     }
     token_response = requests.post(token_url, data=token_data)
@@ -125,8 +145,11 @@ def authenticate_user_session():
 
     return tokens
 
-
 def search_emails(query):
+    # Display message indicating function call
+    html_message = display_message("search_emails")
+    conversation.append({"role": "system", "content": html_message})
+
     access_token = session.get('access_token')
     if not access_token:
         tokens = authenticate_user_session()
@@ -153,7 +176,8 @@ def search_emails(query):
             return None
     else:
         return f"Error fetching emails: {response.status_code}"
-
+def display_message(function_name):
+    return f"Function {function_name} is now called."
 
 if __name__ == "__main__":
     host = '0.0.0.0'
