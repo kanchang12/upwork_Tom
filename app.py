@@ -13,6 +13,10 @@ ZOHO_AUTHORIZATION_URL = 'https://accounts.zoho.com/oauth/v2/auth'
 ZOHO_TOKEN_URL = 'https://accounts.zoho.com/oauth/v2/token'
 ZOHO_SCOPES = 'ZohoMail.messages.READ'
 
+@app.route("/")
+def index():
+    return render_template("index.html")
+
 @app.route("/talk", methods=["POST"])
 def talk():
     if request.method == "POST":
