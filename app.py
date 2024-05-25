@@ -18,12 +18,14 @@ def send_to_make():
         payload = {
             "userInput": user_input
         }
+        """
         response = requests.post(MAKE_WEBHOOK_URL, json=payload)
         if response.status_code == 200:
             make_response = response.json().get('data')
             return jsonify({'answer': make_response})
         else:
             return jsonify({"error": "Failed to get response from Make"}), 400
+            """
     except Exception as e:
         return jsonify({"error": str(e)}), 400
 
