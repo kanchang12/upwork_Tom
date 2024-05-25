@@ -22,13 +22,18 @@ def process_text():
 
         response = requests.post(MAKE_WEBHOOK_URL, json=payload)
         if response.status_code == 200:
-            make_response = response.json().get('data')
-            return jsonify({'answer': make_response})
+            make_response = response.text
+            # Return HTML response
+            return Response(make_response, mimetype='text/html')
         else:
-            return jsonify({"error": "Failed to get response from Make"}), 400
+            # Return error message as HTML
+            error_message = "<h1>Failed to get response from Make</h1>"
+            return Response(error_message, status=400, mimetype='text/html')
 
     except Exception as e:
-        return jsonify({"error": str(e)}), 400
+        # Return error message as HTML
+        error_message = "<h1>Error: {}</h1>".format(e)
+        return Response(error_message, status=400, mimetype='text/html')
 
 if __name__ == "__main__":
     app.run(host='0.0.0.0', port=5000)
