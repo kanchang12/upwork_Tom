@@ -8,7 +8,7 @@ app.secret_key = os.getenv('FLASK_SECRET_KEY', 'your_secret_key')
 # Zoho OAuth2 configuration
 ZOHO_CLIENT_ID = os.getenv('ZOHO_CLIENT_ID')
 ZOHO_CLIENT_SECRET = os.getenv('ZOHO_CLIENT_SECRET')
-ZOHO_REDIRECT_URI = os.getenv('ZOHO_REDIRECT_URI', 'https://your_redirect_uri.com/callback')
+ZOHO_REDIRECT_URI = os.getenv('ZOHO_REDIRECT_URI', 'urn:ietf:wg:oauth:2.0:oob')
 ZOHO_AUTHORIZATION_URL = 'https://accounts.zoho.com/oauth/v2/auth'
 ZOHO_TOKEN_URL = 'https://accounts.zoho.com/oauth/v2/token'
 ZOHO_SCOPES = 'ZohoMail.messages.READ'
@@ -45,6 +45,7 @@ def callback():
 
     # Return the access token in the JSON response
     return jsonify({'access_token': session['access_token']})
+
 
 if __name__ == "__main__":
     app.run(debug=True)
