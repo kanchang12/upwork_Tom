@@ -11,21 +11,22 @@ MAKE_WEBHOOK_URL = 'https://hooks.zapier.com/hooks/catch/18968519/3vp1fzw/'
 def index():
     return render_template("index.html")
 
-@app.route("/send_to_make", methods=["POST"])
-def send_to_make():
+@app.route("/process_text", methods=["POST"])
+def process_text():
     try:
-        user_input = request.json.get('userInput')
+        conversation = request.json.get('conversation')
+        user_input = conversation[-1].get('content') if conversation else None
         payload = {
             "userInput": user_input
         }
-    
+
         response = requests.post(MAKE_WEBHOOK_URL, json=payload)
         if response.status_code == 200:
             make_response = response.json().get('data')
             return jsonify({'answer': make_response})
         else:
             return jsonify({"error": "Failed to get response from Make"}), 400
-        
+
     except Exception as e:
         return jsonify({"error": str(e)}), 400
 
