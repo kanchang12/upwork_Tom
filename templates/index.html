@@ -2,53 +2,164 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>Assistant</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Talk to a Financial Advisor</title>
+    <style>
+        body {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+            font-family: Arial, sans-serif;
+            background-color: #f0f0f0;  /* Light grey background */
+        }
+        #container {
+            text-align: center;
+            width: 60%;  /* Make the container 60% of the screen width */
+        }
+        #message-box {
+            width: 100%;  /* Make the message box take up the full width of the container */
+            height: 60vh;  /* Make the message box 60% of the viewport height */
+            border: 1px solid #ccc;
+            padding: 10px;
+            overflow-y: auto;  /* Ensure overflow is handled correctly */
+            margin-bottom: 20px;
+            background-color: #ffffff;  /* White background for the message box */
+            box-sizing: border-box;
+        }
+        .user-message {
+            color: black;
+        }
+        .agent-message {
+            color: blue;
+        }
+        button {
+            background-color: #4CAF50;  /* Green background for buttons */
+            color: white;  /* White text for buttons */
+            border: none;
+            padding: 10px 20px;
+            text-align: center;
+            text-decoration: none;
+            display: inline-block;
+            font-size: 16px;
+            margin: 4px 2px;
+            cursor: pointer;
+            border-radius: 8px;
+        }
+        button:hover {
+            background-color: #45a049;  /* Darker green on hover */
+        }
+        #image-container {
+            width: 40%; /* Make the container 40% of the screen width */
+            margin: auto; /* Center the container horizontally */
+        }
+        #centered-image {
+            display: block;
+            max-width: 100%; /* Ensure the image doesn't exceed the container's width */
+            height: auto; /* Maintain aspect ratio */
+        }
+    </style>
 </head>
 <body>
-    <form id="assistantForm">
-        <label for="userInput">Enter your message:</label>
-        <input type="text" id="userInput" name="userInput">
-        <button type="submit">Send</button>
-    </form>
-    <div id="response"></div>
-    <button id="voiceInputButton">Use Voice Command</button>
-
+    <div id="container">
+        <h2>Talk to a Financial Advisor</h2>
+        <div id="message-box"></div> <!-- Ensure this is always present in the DOM -->
+        <div id="image-container">
+            <img src="https://images.unsplash.com/photo-1604881988758-f76ad2f7aac1?q=80&w=2071&auto=format&fit=crop&ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D" alt="Appropriate Image" id="centered-image">
+        </div>
+        <button onclick="startRecognition()">Speak</button>
+        <button onclick="stopRecognition()">Stop</button>
+    </div>
     <script>
-        document.getElementById('assistantForm').addEventListener('submit', function(event) {
-            event.preventDefault();
-            const userInput = document.getElementById('userInput').value;
-            processInput(userInput);
-        });
+        let recognition;
+        let isRecognizing = false;
+        let conversation = [];
 
-        document.getElementById('voiceInputButton').addEventListener('click', function() {
-            const recognition = new (window.SpeechRecognition || window.webkitSpeechRecognition)();
-            recognition.lang = 'en-US';
-            recognition.start();
+        if (!('webkitSpeechRecognition' in window)) {
+            alert('Sorry, your browser does not support Speech Recognition');
+        } else {
+            recognition = new webkitSpeechRecognition();
+            recognition.continuous = true;
+            recognition.interimResults = true;
+
             recognition.onresult = function(event) {
-                const userInput = event.results[0][0].transcript;
-                processInput(userInput);
+                for (let i = event.resultIndex; i < event.results.length; ++i) {
+                    if (event.results[i].isFinal) {
+                        const text = event.results[i][0].transcript;
+                        appendMessage(text, 'user-message');
+                        sendTextToBackend(text);
+                        recognition.stop(); // Stop recognition after user input is processed
+                        isRecognizing = false;
+                    }
+                }
             };
-        });
 
-        function processInput(userInput) {
-            fetch('/send_to_make', {
+            recognition.onerror = function(event) {
+                console.error('Speech recognition error detected: ' + event.error);
+            };
+        }
+
+        function startRecognition() {
+            if (isRecognizing) {
+                return;
+            }
+            isRecognizing = true;
+            recognition.start();
+        }
+        function stopRecognition() {
+            if (!isRecognizing) {
+                return;
+            }
+            isRecognizing = false;
+            recognition.stop();
+            conversation = [];  // Clear the conversation when stopped
+        }
+
+        function appendMessage(text, className) {
+            const messageBox = document.getElementById('message-box');
+            if (!messageBox) {
+                console.error('Message box element not found');
+                return;
+            }
+            const message = document.createElement('div');
+            message.className = className;
+            message.textContent = text;
+            messageBox.appendChild(message);
+            messageBox.scrollTop = messageBox.scrollHeight;  // Auto-scroll to the bottom
+        }
+
+        function sendTextToBackend(text) {
+            // Add user message to the conversation
+            conversation.push({"role": "user", "content": text});
+
+            fetch('/process_text', {
                 method: 'POST',
                 headers: {
-                    'Content-Type': 'application/json'
+                    'Content-Type': 'application/json',
                 },
-                body: JSON.stringify({ userInput })
+                body: JSON.stringify({ conversation: conversation }),
             })
             .then(response => response.json())
             .then(data => {
-                document.getElementById('response').innerText = data.answer;
-                speakText(data.answer);
+                if (data.error) {
+                    console.error('Error from backend:', data.error);
+                } else {
+                    const agentMessage = data.answer;
+                    appendMessage(agentMessage, 'agent-message');
+                    readAloud(agentMessage);
+
+                    // Add agent response to the conversation
+                    conversation.push({"role": "assistant", "content": agentMessage});
+                }
             })
             .catch(error => console.error('Error:', error));
         }
 
-        function speakText(text) {
-            const utterance = new SpeechSynthesisUtterance(text);
-            window.speechSynthesis.speak(utterance);
+        function readAloud(text) {
+            const speech = new SpeechSynthesisUtterance(text);
+            speech.lang = 'en-US';
+            window.speechSynthesis.speak(speech);
         }
     </script>
 </body>
