@@ -134,24 +134,26 @@
             conversation.push({"role": "user", "content": text});
 
             fetch('/process_text', {
-    method: 'POST',
-    headers: {
-        'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({ conversation: conversation }),
-})
-.then(response => response.text())  // Get response as text (HTML)
-.then(data => {
-    if (data.error) {
-        console.error('Error from backend:', data.error);
-    } else {
-        const agentMessage = data;
-        appendMessage(agentMessage, 'agent-message');
-        // Add agent response to the conversation
-        conversation.push({"role": "assistant", "content": agentMessage});
-    }
-})
-.catch(error => console.error('Error:', error));
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ conversation: conversation }),
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.error) {
+                    console.error('Error from backend:', data.error);
+                } else {
+                    const agentMessage = data.answer;
+                    appendMessage(agentMessage, 'agent-message');
+                    readAloud(agentMessage);
+
+                    // Add agent response to the conversation
+                    conversation.push({"role": "assistant", "content": agentMessage});
+                }
+            })
+            .catch(error => console.error('Error:', error));
         }
 
         function readAloud(text) {
