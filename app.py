@@ -2,9 +2,10 @@ import os
 from flask import Flask, render_template, request, jsonify, redirect, session, url_for
 import openai
 import requests
+from datetime import datetime, timedelta
 
 app = Flask(__name__)
-#app.secret_key = os.getenv('FLASK_SECRET_KEY', 'your_secret_key')
+app.secret_key = os.getenv('FLASK_SECRET_KEY', 'your_secret_key')
 
 # Set up OpenAI API key from environment variable
 openai.api_key = os.getenv('OPENAI_API_KEY')
@@ -12,7 +13,7 @@ openai.api_key = os.getenv('OPENAI_API_KEY')
 # Zoho OAuth2 configuration
 ZOHO_CLIENT_ID = os.getenv('ZOHO_CLIENT_ID')
 ZOHO_CLIENT_SECRET = os.getenv('ZOHO_CLIENT_SECRET')
-ZOHO_REDIRECT_URI = os.getenv('ZOHO_REDIRECT_URI', 'http://localhost:5000/zoho/callback')
+ZOHO_REDIRECT_URI = os.getenv('ZOHO_REDIRECT_URI', 'https://scared-terrijo-webpagegem-c993c1c0.koyeb.app/zoho/callback')
 ZOHO_AUTHORIZATION_URL = 'https://accounts.zoho.com/oauth/v2/auth'
 ZOHO_TOKEN_URL = 'https://accounts.zoho.com/oauth/v2/token'
 ZOHO_SCOPES = 'ZohoMail.messages.READ'
@@ -32,6 +33,7 @@ Your session should run until you are responding."""
 @app.route("/")
 def index():
     return render_template("index.html")
+
 def rephrase_command(user_command):
     prompt = f"User: \"{user_command}\"\nAI: Search for:"
     try:
@@ -55,19 +57,20 @@ def rephrase_command(user_command):
     except Exception as e:
         return f"Error: {str(e)}"
 
-import os
-import requests
-
 def fetch_email_data(search_term):
-    # Zoho OAuth2 configuration
-    ZOHO_CLIENT_ID = os.getenv('ZOHO_CLIENT_ID')
-    ZOHO_CLIENT_SECRET = os.getenv('ZOHO_CLIENT_SECRET')
-    ZOHO_ACCOUNT_ID = '60018950613'  # Replace with your Zoho Mail account ID
+    if 'access_token' not in session:
+        return redirect(url_for('zoho_login'))
 
-    # Make API call to fetch email data
+    access_token = session['access_token']
+    ZOHO_ACCOUNT_ID = '60003473422'  # Replace with your Zoho Mail account ID
+
+    # Check if the access token is expired and refresh if necessary
+    expires_at = session.get('expires_at')
+    if expires_at and datetime.utcnow() > expires_at:
+        refresh_access_token()
+
     headers = {
-        'X-ZOHO-CLIENT-ID': ZOHO_CLIENT_ID,
-        'X-ZOHO-CLIENT-SECRET': ZOHO_CLIENT_SECRET
+        'Authorization': f'Zoho-oauthtoken {session["access_token"]}'
     }
     search_url = f'https://mail.zoho.in/api/accounts/{ZOHO_ACCOUNT_ID}/messages/search?search_key={search_term}'
     response = requests.get(search_url, headers=headers)
@@ -87,8 +90,6 @@ def fetch_email_data(search_term):
             return "No relevant emails found."
     else:
         return f"Error fetching emails: {response.status_code}"
-
-
 
 @app.route("/process_text", methods=["POST"])
 def process_text():
@@ -112,11 +113,9 @@ def process_text():
                 return jsonify({'answer': "Error: Empty rephrased command."})
             elif rephrased_command.startswith("Error:"):
                 return jsonify({'answer': rephrased_command})
-                
 
             # Extract the variable from the rephrased command
             try:
-                #variable = rephrased_command.split(":")[1].strip()
                 variable = rephrased_command
             except IndexError:
                 return jsonify({'answer': "Error: Unable to parse the rephrased command."})
@@ -142,10 +141,9 @@ def process_text():
         except Exception as e:
             return jsonify({"error": str(e)}), 400
 
-
 @app.route('/login/zoho')
 def zoho_login():
-    auth_url = f'{ZOHO_AUTHORIZATION_URL}?response_type=code&client_id={ZOHO_CLIENT_ID}&redirect_uri={ZOHO_REDIRECT_URI}&scope={ZOHO_SCOPES}'
+    auth_url = f'{ZOHO_AUTHORIZATION_URL}?response_type=code&client_id={ZOHO_CLIENT_ID}&redirect_uri={ZOHO_REDIRECT_URI}&scope={ZOHO_SCOPES}&access_type=offline&prompt=consent'
     return redirect(auth_url)
 
 @app.route('/zoho/callback')
@@ -162,7 +160,22 @@ def zoho_callback():
     tokens = token_response.json()
     session['access_token'] = tokens['access_token']
     session['refresh_token'] = tokens['refresh_token']
+    # Calculate the expiration time
+    session['expires_at'] = datetime.utcnow() + timedelta(seconds=int(tokens['expires_in']))
     return redirect(url_for('index'))
+
+def refresh_access_token():
+    refresh_token = session.get('refresh_token')
+    token_data = {
+        'refresh_token': refresh_token,
+        'client_id': ZOHO_CLIENT_ID,
+        'client_secret': ZOHO_CLIENT_SECRET,
+        'grant_type': 'refresh_token'
+    }
+    token_response = requests.post(ZOHO_TOKEN_URL, data=token_data)
+    tokens = token_response.json()
+    session['access_token'] = tokens['access_token']
+    session['expires_at'] = datetime.utcnow() + timedelta(seconds=int(tokens['expires_in']))
 
 if __name__ == "__main__":
     host = '0.0.0.0'
