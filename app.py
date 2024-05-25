@@ -4,7 +4,7 @@ import requests
 
 app = Flask(__name__)
 
-# Set your Make webhook URL here or from an environment variable
+# Ensure your Make webhook URL is set in the environment variables
 MAKE_WEBHOOK_URL = 'https://hook.eu2.make.com/v7ba7x5qt6hd8qwreh46q3bocjmph0nz'
 
 @app.route("/")
