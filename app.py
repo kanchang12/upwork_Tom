@@ -5,7 +5,7 @@ import requests
 app = Flask(__name__)
 
 # Ensure your Make webhook URL is set in the environment variables
-MAKE_WEBHOOK_URL = 'https://hooks.zapier.com/hooks/catch/18968519/3vp1fzw/'
+MAKE_WEBHOOK_URL = 'https://hooks.zapier.com/hooks/catch/18968519/3vpk4zt/'
 
 @app.route("/")
 def index():
