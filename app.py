@@ -23,7 +23,9 @@ def process_text():
         response = requests.post(MAKE_WEBHOOK_URL, json=payload)
         if response.status_code == 200:
             make_response = response.json().get('answer')  # Access 'answer' key
-            return render_template('response.html', response_text=make_response)
+            # Format the response to fit into the existing structure of index.html
+            formatted_response = f'<div class="agent-message">{make_response}</div>'
+            return jsonify({'answer': formatted_response})
         else:
             return jsonify({"error": "Failed to get response from Make"}), 400
 
