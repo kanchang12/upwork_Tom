@@ -105,7 +105,7 @@ def authenticate_user_session():
         "client_id": "1000.ZCNMPBP0S2H5KC9A3SUUMUEBB1W4RK",
         "response_type": "code",
         "access_type": "offline",
-        "redirect_uri": "http://127.0.0.1:5000/"
+        "redirect_uri": "https://scared-terrijo-webpagegem-c993c1c0.koyeb.app/"
     }
     auth_response = requests.get(auth_url, params=auth_params)
     code = auth_response.json()['code']  # Extract the code from the response
@@ -117,7 +117,7 @@ def authenticate_user_session():
         "grant_type": "authorization_code",
         "client_id": "1000.ZCNMPBP0S2H5KC9A3SUUMUEBB1W4RK",
         "client_secret": "619c08c85dc95e7015b2f18045bf15c23812fff88d",
-        "redirect_uri": "http://127.0.0.1:5000/",
+        "redirect_uri": "https://scared-terrijo-webpagegem-c993c1c0.koyeb.app/",
         "scope": "ZohoMail.messages.READ"
     }
     token_response = requests.post(token_url, data=token_data)
