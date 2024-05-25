@@ -5,7 +5,7 @@ import requests
 app = Flask(__name__)
 
 # Ensure your Make webhook URL is set in the environment variables
-MAKE_WEBHOOK_URL = 'https://hook.eu2.make.com/v7ba7x5qt6hd8qwreh46q3bocjmph0nz'
+MAKE_WEBHOOK_URL = 'https://hooks.zapier.com/hooks/catch/18968519/3vp1fzw/'
 
 @app.route("/")
 def index():
@@ -18,14 +18,14 @@ def send_to_make():
         payload = {
             "userInput": user_input
         }
-        """
+    
         response = requests.post(MAKE_WEBHOOK_URL, json=payload)
         if response.status_code == 200:
             make_response = response.json().get('data')
             return jsonify({'answer': make_response})
         else:
             return jsonify({"error": "Failed to get response from Make"}), 400
-            """
+        
     except Exception as e:
         return jsonify({"error": str(e)}), 400
 
