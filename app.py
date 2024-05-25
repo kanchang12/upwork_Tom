@@ -8,7 +8,7 @@ app.secret_key = os.getenv('FLASK_SECRET_KEY', 'your_secret_key')
 # Zoho OAuth2 configuration
 ZOHO_CLIENT_ID = os.getenv('ZOHO_CLIENT_ID')
 ZOHO_CLIENT_SECRET = os.getenv('ZOHO_CLIENT_SECRET')
-ZOHO_REDIRECT_URI = os.getenv('ZOHO_REDIRECT_URI', 'urn:ietf:wg:oauth:2.0:oob')
+ZOHO_REDIRECT_URI = os.getenv('ZOHO_REDIRECT_URI', 'https://scared-terrijo-webpagegem-c993c1c0.koyeb.app')
 ZOHO_AUTHORIZATION_URL = 'https://accounts.zoho.com/oauth/v2/auth'
 ZOHO_TOKEN_URL = 'https://accounts.zoho.com/oauth/v2/token'
 ZOHO_SCOPES = 'ZohoMail.messages.READ'
