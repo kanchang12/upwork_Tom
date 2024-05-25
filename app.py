@@ -5,7 +5,7 @@ import requests
 app = Flask(__name__)
 
 # Ensure your Make webhook URL is set in the environment variables
-MAKE_WEBHOOK_URL = 'https://hooks.zapier.com/hooks/catch/18968519/3vpk4zt/'
+MAKE_WEBHOOK_URL = 'https://hook.eu2.make.com/v0vjdkn2f6msuakr7hxv86ztmk5ukttq'
 
 @app.route("/")
 def index():
@@ -14,16 +14,22 @@ def index():
 @app.route("/process_text", methods=["POST"])
 def process_text():
     try:
+        # Get the conversation from the request
         conversation = request.json.get('conversation')
         user_input = conversation[-1].get('content') if conversation else None
+
+        # Create the JSON payload
         payload = {
             "userInput": user_input
         }
 
-        response = requests.post(MAKE_WEBHOOK_URL, data=payload)  # Send data as form-encoded
+        # Send the JSON payload to the webhook URL
+        response = requests.post(MAKE_WEBHOOK_URL, json=payload)  # Send data as JSON
 
+        # Check the response status and process accordingly
         if response.status_code == 200:
-            make_response = response.text  # Get the response text
+            make_response = response.json().get('answer')  # Get the 'answer' key from JSON response
+
             # Format the response to fit into the existing structure of index.html
             formatted_response = f'<div class="agent-message">{make_response}</div>'
             return jsonify({'answer': formatted_response})
