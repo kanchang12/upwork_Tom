@@ -67,8 +67,8 @@
             .then(response => response.json())
             .then(data => {
                 console.log('Received response:', data);
-                displayResponse(data.response);
-                speakResponse(data.response);
+                displayResponse(data.received_data);
+                speakResponse(data.received_data.message);
             })
             .catch(error => {
                 console.error('Error:', error);
@@ -76,7 +76,7 @@
         }
 
         function displayResponse(response) {
-            document.getElementById('response').textContent += "Response: " + response + "\n";
+            document.getElementById('response').textContent = "Response: " + JSON.stringify(response) + "\n";
         }
 
         function speakResponse(response) {
