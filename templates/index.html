@@ -137,7 +137,7 @@
             conversation.push({"role": "user", "content": text});
 
             fetch('/process_text', {
-                method: 'GET',
+                method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
                 },
