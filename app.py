@@ -11,7 +11,7 @@ MAKE_WEBHOOK_URL = 'https://hook.eu2.make.com/v0vjdkn2f6msuakr7hxv86ztmk5ukttq'
 def index():
     return render_template("index.html")
 
-@app.route("/process_text", methods=["POST"])
+@app.route("/process_text", methods=["GET", "POST"])
 def process_text():
     try:
         # Get the conversation from the request
