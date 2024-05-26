@@ -7,7 +7,7 @@ app = Flask(__name__)
 def index():
     return render_template('index.html')
 
-@app.route('/send_message', methods=['POST'])
+@app.route('/send_message', methods=['GET', 'POST'])
 def send_message():
     # Get user input from the request
     user_input = request.json['message']
