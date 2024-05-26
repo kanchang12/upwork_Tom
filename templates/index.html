@@ -4,18 +4,39 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Voice Chat</title>
+    <style>
+        body {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100vh;
+            margin: 0;
+        }
+
+        #chat-container {
+            max-width: 400px;
+            text-align: center;
+        }
+
+        #user-voice, #response {
+            margin-bottom: 10px;
+        }
+    </style>
 </head>
 <body>
-    <h1>Voice Chat</h1>
+    <div id="chat-container">
+        <h1>Voice Chat</h1>
 
-    <!-- Display area for user's voice command -->
-    <div id="user-voice"></div>
+        <!-- Display area for user's voice command -->
+        <div id="user-voice"></div>
 
-    <!-- Button to trigger voice input -->
-    <button id="speak-button" onclick="startSpeechRecognition()">Speak</button>
+        <!-- Display area for response from webhook -->
+        <div id="response"></div>
 
-    <!-- Display area for response from webhook -->
-    <div id="response"></div>
+        <!-- Button to trigger voice input -->
+        <button id="speak-button" onclick="startSpeechRecognition()">Speak</button>
+    </div>
 
     <!-- JavaScript to handle speech recognition and interaction with Flask -->
     <script>
@@ -55,7 +76,7 @@
         }
 
         function displayResponse(response) {
-            document.getElementById('response').textContent = "Response: " + response;
+            document.getElementById('response').textContent += "Response: " + response + "\n";
         }
 
         function speakResponse(response) {
