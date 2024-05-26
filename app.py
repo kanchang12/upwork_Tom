@@ -1,5 +1,6 @@
 from flask import Flask, render_template, jsonify, request
 import requests
+from bs4 import BeautifulSoup
 
 app = Flask(__name__)
 
@@ -27,7 +28,17 @@ def send_to_webhook(user_input):
     
     # Check if request was successful
     if response.status_code == 200:
-        return response.json()['response']
+        # Check if the response is in JSON format
+        try:
+            return response.json()['response']
+        except ValueError:
+            # If not JSON, parse as HTML
+            soup = BeautifulSoup(response.text, 'html.parser')
+            subject = soup.find('subject')
+            if subject:
+                return subject.text
+            else:
+                return 'Error: Subject not found in HTML'
     else:
         return 'Error: Webhook request failed'
 
