@@ -9,7 +9,7 @@ app = Flask(__name__)
 MAKE_WEBHOOK_URL = 'https://hook.eu2.make.com/v0vjdkn2f6msuakr7hxv86ztmk5ukttq'
 
 # List of keywords for fuzzy matching
-KEYWORDS = ["search", "query", "find", "lookup", "locate"]
+KEYWORDS = ["search", "query", "find", "lookup", "locate", "fetch", "is there", "attachment", "email"]
 
 @app.route("/")
 def index():
@@ -25,7 +25,7 @@ def process_text():
         # Perform fuzzy matching on the user input to detect keywords
         matched_keyword, score = process.extractOne(user_input, KEYWORDS)
 
-        if score >= 80:  # Threshold for considering a match
+        if score >= 50:  # Threshold for considering a match
             # If a keyword is found, send the user input directly to the next module
             payload = {
                 "userInput": user_input
