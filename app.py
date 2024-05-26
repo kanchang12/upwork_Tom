@@ -21,7 +21,7 @@ def send_message():
 
 def send_to_webhook(user_input):
     # URL of the webhook
-    webhook_url = 'https://hook.eu2.make.com/xu9opvhl51s6n840q920bplnx5y6ixpt'
+    webhook_url = 'https://hooks.zapier.com/hooks/catch/18968519/3vnpjwc/'
 
     # Send user input to webhook and receive response
     response = requests.post(webhook_url, json={'message': user_input})
