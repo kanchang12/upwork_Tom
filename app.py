@@ -1,43 +1,35 @@
-import os
-from flask import Flask, render_template, request, jsonify
+from flask import Flask, render_template, jsonify, request
 import requests
 
 app = Flask(__name__)
 
-# Ensure your Make webhook URL is set in the environment variables
-MAKE_WEBHOOK_URL = 'https://hook.eu2.make.com/v0vjdkn2f6msuakr7hxv86ztmk5ukttq'
-
-@app.route("/")
+@app.route('/')
 def index():
-    return render_template("index.html")
+    return render_template('index.html')
 
-@app.route("/process_text", methods=["GET", "POST"])
-def process_text():
-    try:
-        # Get the conversation from the request
-        conversation = request.json.get('conversation')
-        user_input = conversation[-1].get('content') if conversation else None
+@app.route('/send_message', methods=['POST'])
+def send_message():
+    # Get user input from the request
+    user_input = request.json['message']
+    
+    # Simulate sending user input to webhook and receiving response
+    response_from_webhook = send_to_webhook(user_input)
+    
+    # Send the response back to the HTML page
+    return jsonify({'response': response_from_webhook})
 
-        # Create the JSON payload
-        payload = {
-            "userInput": user_input
-        }
+def send_to_webhook(user_input):
+    # URL of the webhook
+    webhook_url = 'https://hook.eu2.make.com/xu9opvhl51s6n840q920bplnx5y6ixpt'
 
-        # Send the JSON payload to the webhook URL
-        response = requests.post(MAKE_WEBHOOK_URL, json=payload)  # Send data as JSON
+    # Send user input to webhook and receive response
+    response = requests.post(webhook_url, json={'message': user_input})
+    
+    # Check if request was successful
+    if response.status_code == 200:
+        return response.json()['response']
+    else:
+        return 'Error: Webhook request failed'
 
-        # Check the response status and process accordingly
-        if response.status_code == 200:
-            make_response = response.json().get('answer')  # Get the 'answer' key from JSON response
-
-            # Format the response to fit into the existing structure of index.html
-            formatted_response = f'<div class="agent-message">{make_response}</div>'
-            return jsonify({'answer': formatted_response})
-        else:
-            return jsonify({"error": "Failed to get response from Make"}), 400
-
-    except Exception as e:
-        return jsonify({"error": str(e)}), 400
-
-if __name__ == "__main__":
-    app.run(host='0.0.0.0', port=5000)
+if __name__ == '__main__':
+    app.run(debug=True)
