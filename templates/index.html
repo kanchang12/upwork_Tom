@@ -75,6 +75,7 @@
         let recognition;
         let isRecognizing = false;
         let conversation = [];
+        
 
         if (!('webkitSpeechRecognition' in window)) {
             alert('Sorry, your browser does not support Speech Recognition');
@@ -82,6 +83,7 @@
             recognition = new webkitSpeechRecognition();
             recognition.continuous = true;
             recognition.interimResults = true;
+            recognition.lang = 'en-IN';
 
             recognition.onresult = function(event) {
                 for (let i = event.resultIndex; i < event.results.length; ++i) {
