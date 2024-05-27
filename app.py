@@ -27,7 +27,7 @@ def send_message():
 
 def send_to_webhook(data):
     # URL of the Make.com webhook
-    webhook_url = 'https://hook.eu2.make.com/xu9opvhl51s6n840q920bplnx5y6ixpt'
+    webhook_url = 'https://dochorizon.klippa.com/api/flow_builder/flows/2f38c97e-2a95-41fe-9e67-5e2337fc4e41/components/40ffe3ad-66a0-4310-a731-d0a22180f8bb'
 
     # Send user input to webhook and receive response
     response = requests.post(webhook_url, json=data)
