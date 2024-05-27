@@ -47,11 +47,12 @@ def find_specific_email(service, search_query):
     emails = search_emails(service, search_query)
     if not emails:
         print("No emails found.")
-        return
+        return None
+    email_contents = []
     for email in emails:
         body = get_email_content(service, email['id'])
-        print("Email Body:")
-        print(body)
+        email_contents.append(body)
+    return email_contents
 
 if __name__ == '__main__':
     gmail_service = authenticate_gmail()
