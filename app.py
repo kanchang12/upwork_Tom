@@ -1,5 +1,6 @@
 from flask import Flask, render_template, jsonify, request
 import requests
+import second
 
 app = Flask(__name__)
 
@@ -16,8 +17,11 @@ def send_message():
         # Print the received JSON data to the console
         print("Received JSON data:", data)
         
-        # Send user input to Make.com webhook and receive response
-        response_from_webhook = send_to_webhook(data)
+        # Process the data using functions from second.py
+        processed_data = second.process_data(data)
+        
+        # Send processed data to Make.com webhook and receive response
+        response_from_webhook = send_to_webhook(processed_data)
         
         # Send the response back to the HTML page
         return jsonify({'status': 'success', 'response': response_from_webhook})
