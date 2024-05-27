@@ -14,11 +14,11 @@ def send_message():
         # Get the JSON data from the request
         data = request.get_json()
         
-        # Print the received JSON data to the console
-        print("Received JSON data:", data)
+        # Extract the key phrase from the JSON data
+        key_phrase = data.get('key_phrase')
         
-        # Process the data using functions from second.py
-        processed_data = second.process_data(data)
+        # Process the key phrase using the function from second.py
+        processed_data = second.process_data(key_phrase)
         
         # Send processed data to Make.com webhook and receive response
         response_from_webhook = send_to_webhook(processed_data)
