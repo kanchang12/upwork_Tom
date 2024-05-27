@@ -1,6 +1,5 @@
 from flask import Flask, render_template, jsonify, request
 import requests
-from bs4 import BeautifulSoup
 
 app = Flask(__name__)
 
@@ -17,11 +16,31 @@ def send_message():
         # Print the received JSON data to the console
         print("Received JSON data:", data)
         
-        # Send a response back
-        return jsonify({'status': 'success', 'received_data': data})
+        # Send user input to Make.com webhook and receive response
+        response_from_webhook = send_to_webhook(data)
+        
+        # Send the response back to the HTML page
+        return jsonify({'status': 'success', 'response': response_from_webhook})
     except Exception as e:
         print("Error:", str(e))
         return jsonify({'status': 'error', 'message': str(e)}), 400
+
+def send_to_webhook(data):
+    # URL of the Make.com webhook
+    webhook_url = 'https://hook.eu2.make.com/xu9opvhl51s6n840q920bplnx5y6ixpt'
+
+    # Send user input to webhook and receive response
+    response = requests.post(webhook_url, json=data)
+    
+    # Check if request was successful
+    if response.status_code == 200:
+        # Check if the response is in JSON format
+        try:
+            return response.json()
+        except ValueError:
+            return 'Error: Response is not in JSON format'
+    else:
+        return 'Error: Webhook request failed'
 
 if __name__ == '__main__':
     app.run(debug=True)
