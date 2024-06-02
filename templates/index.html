@@ -3,87 +3,69 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Voice Chat</title>
-    <style>
-        body {
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            height: 100vh;
-            margin: 0;
-        }
-
-        #chat-container {
-            max-width: 400px;
-            text-align: center;
-        }
-
-        #user-voice, #response {
-            margin-bottom: 10px;
-        }
-    </style>
+    <title>Email Viewer</title>
+    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
 </head>
 <body>
-    <div id="chat-container">
-        <h1>Voice Chat</h1>
+    <div class="container">
+        <h1 class="mt-5">Email Viewer</h1>
+        <form id="emailForm" class="mt-4" action="/" method="POST">
+            <div class="form-group">
+                <label for="keyword">Keyword:</label>
+                <input type="text" class="form-control" id="keyword" name="keyword" placeholder="Enter keyword">
+            </div>
+            <button type="submit" id="fetchBtn" class="btn btn-primary">Fetch Email</button>
+        </form>
+        
+        {% if email %}
+        <div class="email-container mt-5">
+            <div class="email-header">
+                <p><strong>Date:</strong> {{ email.date }}</p>
+                <p><strong>From:</strong> {{ email.sender }}</p>
+                <p><strong>Subject:</strong> {{ email.subject }}</p>
+            </div>
+            <div class="email-body">
+                <p><strong>Body:</strong></p>
+                <p>{{ email.body }}</p>
+            </div>
+            <div class="email-attachments">
+                <p><strong>Attachments:</strong></p>
+                {% for attachment in email.attachments %}
+                <a href="/download/{{ attachment.data }}?message_id={{ attachment.messageId }}" target="_blank">{{ attachment.filename }}</a>
+                {% endfor %}
+            </div>
+        </div>
+        {% endif %}
 
-        <!-- Display area for user's voice command -->
-        <div id="user-voice"></div>
-
-        <!-- Display area for response from webhook -->
-        <div id="response"></div>
-
-        <!-- Button to trigger voice input -->
-        <button id="speak-button" onclick="startSpeechRecognition()">Speak</button>
+        {% if error %}
+        <div class="alert alert-danger mt-5" role="alert">
+            {{ error }}
+        </div>
+        {% endif %}
     </div>
 
-    <!-- JavaScript to handle speech recognition and interaction with Flask -->
     <script>
-        function startSpeechRecognition() {
-            const recognition = new (window.SpeechRecognition || window.webkitSpeechRecognition)();
+        const emailForm = document.getElementById('emailForm');
+        const keywordInput = document.getElementById('keyword');
+        const fetchBtn = document.getElementById('fetchBtn');
+
+        // Function to handle voice input
+        function handleVoiceInput() {
+            const recognition = new webkitSpeechRecognition() || new SpeechRecognition();
             recognition.lang = 'en-US';
             recognition.start();
 
             recognition.onresult = function(event) {
-                const userMessage = event.results[0][0].transcript;
-                document.getElementById('user-voice').textContent = "You said: " + userMessage;
-                sendToFlask(userMessage);
-            };
-
-            recognition.onerror = function(event) {
-                console.error('Speech recognition error', event.error);
+                const transcript = event.results[0][0].transcript;
+                keywordInput.value = transcript;
+                setTimeout(() => {
+                    fetchBtn.click();
+                }, 2000); // Click fetch button after 2 seconds
             };
         }
 
-        function sendToFlask(message) {
-            fetch('/send_message', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify({message: message})
-            })
-            .then(response => response.json())
-            .then(data => {
-                console.log('Received response:', data);
-                displayResponse(data.received_data);
-                speakResponse(data.received_data.message);
-            })
-            .catch(error => {
-                console.error('Error:', error);
-            });
-        }
-
-        function displayResponse(response) {
-            document.getElementById('response').textContent = "Response: " + JSON.stringify(response) + "\n";
-        }
-
-        function speakResponse(response) {
-            const utterance = new SpeechSynthesisUtterance(response);
-            utterance.lang = 'en-US';
-            window.speechSynthesis.speak(utterance);
-        }
+        // Event listener for voice button
+        keywordInput.addEventListener('click', handleVoiceInput);
     </script>
 </body>
 </html>
