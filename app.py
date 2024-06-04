@@ -17,33 +17,16 @@ def chat():
     try:
         user_input = request.form['message']
         
-        # Send HTTP request to Power Automate
+        # Send HTTP request to Make.com
         response = requests.post(POWER_AUTOMATE_ENDPOINT, json={'text': user_input})
-        bot_response = response.json().get('response', 'Error: No response from Power Automate')
-
-        # Pass user input and bot response to OpenAI Chat API
-        openai_response = openai.ChatCompletion.create(
-            model="gpt-3.5-turbo-16k",
-            messages=[
-                {
-                    "role": "system",
-                    "content":  "You are Sam. You will read user input and pass on the next phase for processing."
-                },
-                {
-                    "role": "user",
-                    "content": user_input
-                }
-            ],
-            temperature=1,
-            max_tokens=256,
-            top_p=1,
-            frequency_penalty=0,
-            presence_penalty=0
-        )
-
-        bot_response_from_openai = openai_response.choices[0].message['content']
         
-        return jsonify({"user_input": user_input, "response": bot_response_from_openai})
+        if response.status_code == 200:
+            # If successful, return the response from Make.com
+            make_response = response.json().get('response', 'Error: No response from Make.com')
+            return jsonify({"user_input": user_input, "response": make_response})
+        else:
+            # If unsuccessful, return an error message
+            return jsonify({"user_input": user_input, "response": f"Error: Failed to send message to Make.com (HTTP {response.status_code})"})
     
     except Exception as e:
         # Handle any errors to keep the conversation going
