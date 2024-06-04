@@ -82,8 +82,18 @@ p {
     <div class="background-image"></div>
     <div class="overlay"></div>
     <div id="chat-container"></div>
+    
     <input type="text" id="message-input" placeholder="Type your message here...">
     <button id="voice-input-btn">Voice Input</button>
+    
+    <div id="response-details">
+        <h2>Response Details</h2>
+        <p><strong>Subject:</strong> {% if response.subject %}{{ response.subject }}{% endif %}</p>
+        <p><strong>Date:</strong> {% if response.date %}{{ response.date }}{% endif %}</p>
+        <p><strong>Sender:</strong> {% if response.sender %}{{ response.sender }}{% endif %}</p>
+        <p><strong>Body:</strong> {{ response.body }}</p>
+    </div>
+  
 
     <script>
         document.getElementById('message-input').addEventListener('keypress', function (e) {
@@ -98,28 +108,32 @@ p {
         });
 
         function sendMessage(message) {
-            let chatContainer = document.getElementById('chat-container');
-            chatContainer.innerHTML += `<p><strong>You:</strong> ${message}</p>`;
-                
-            fetch('/chat', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/x-www-form-urlencoded'
-                },
-                body: `message=${message}`
-            })
-            .then(response => response.json())
-            .then(data => {
-                chatContainer.innerHTML += `<p><strong>Companion:</strong> ${data.response}</p>`;
-                chatContainer.scrollTop = chatContainer.scrollHeight;
+  const chatContainer = document.getElementById('chat-container');
+  chatContainer.innerHTML += `<p><strong>You:</strong> ${message}</p>`;
 
-                // Read aloud the response
-                speak(data.response);
-            })
-            .catch(error => {
-                console.error('Error:', error);
-            });
-        }
+  fetch('/chat', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/x-www-form-urlencoded'
+    },
+    body: `message=${message}`
+  })
+  .then(response => response.json())  // Moved inside the callback
+  .then(data => {
+    document.getElementById('response-details').innerHTML = `
+      <h2>Response Details</h2>
+      <p><strong>Subject:</strong> ${data.response.subject ? data.response.subject : ''}</p>
+      <p><strong>Date:</strong> ${data.response.date ? data.response.date : ''}</p>
+      <p><strong>Sender:</strong> ${data.response.sender ? data.response.sender : ''}</p>
+      <p><strong>Body:</strong> ${data.response.body}</p>
+    `;
+    chatContainer.scrollTop = chatContainer.scrollHeight;
+    speak(data.response); // Assuming a speak function exists
+  })
+  .catch(error => {
+    console.error('Error:', error);
+  });
+}
 
         function startVoiceRecognition() {
             const recognition = new webkitSpeechRecognition() || new SpeechRecognition();
