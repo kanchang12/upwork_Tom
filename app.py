@@ -6,7 +6,7 @@ import requests
 app = Flask(__name__)
 openai.api_key = os.getenv('OPENAI_API_KEY')
 
-POWER_AUTOMATE_ENDPOINT = 'https://your-power-automate-endpoint'
+POWER_AUTOMATE_ENDPOINT = 'https://hook.eu2.make.com/xu9opvhl51s6n840q920bplnx5y6ixpt'
 
 @app.route('/')
 def home():
