@@ -1,6 +1,6 @@
 from flask import Flask, render_template, request, jsonify
 import requests
-
+import time
 app = Flask(__name__)
 
 # Replace with your Make.com webhook endpoint
@@ -17,6 +17,8 @@ def chat():
 
     # Send HTTP POST request to Make.com with user input
     response = requests.post(MAKE_COM_ENDPOINT, json={'text': user_input})
+    # Wait for 30 seconds before sending response
+    time.sleep(30)
 
     if response.status_code == 200:
       # If successful, return the response from Make.com
