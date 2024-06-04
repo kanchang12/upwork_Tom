@@ -17,7 +17,7 @@ def chat():
 
     # Send HTTP POST request to Make.com with user input
     response = requests.post(MAKE_COM_ENDPOINT, json={'text': user_input})
-    time.sleep(10)  # Wait for 10 seconds (consider using asynchronous methods)
+    time.sleep(10)  # Consider asynchronous methods for better performance
 
     if response.status_code == 200:
       make_response = response.json().get('response', 'Error: No response from Make.com')
