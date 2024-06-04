@@ -17,20 +17,16 @@ def chat():
 
     # Send HTTP POST request to Make.com with user input
     response = requests.post(MAKE_COM_ENDPOINT, json={'text': user_input})
-    # Wait for 30 seconds before sending response
-    time.sleep(10)
+    time.sleep(10)  # Wait for 10 seconds (consider using asynchronous methods)
 
     if response.status_code == 200:
-      # If successful, return the response from Make.com
       make_response = response.json().get('response', 'Error: No response from Make.com')
       return jsonify({"user_input": user_input, "response": make_response})
     else:
-      # If unsuccessful, return an error message
       return jsonify({"user_input": user_input, "response": f"Error: Failed to send message to Make.com (HTTP {response.status_code})"})
 
   except Exception as e:
-    # Handle any errors to keep the conversation going
-    error_message = 'Error: ' + str(e)
+    error_message = 'An error occurred. Please try again later.'
     return jsonify({"user_input": user_input, "response": error_message})
 
 if __name__ == '__main__':
