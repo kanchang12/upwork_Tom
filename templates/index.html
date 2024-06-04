@@ -76,39 +76,62 @@ p {
     </style>
 </head>
 <body>
-    <h1>Job Application</h1>
+    <h1>Chat Support</h1>
+   
     <p>If you still need a CV, just ask for it</p>
-       <div class="background-image"></div>
+    <div class="background-image"></div>
     <div class="overlay"></div>
     <div id="chat-container"></div>
     <input type="text" id="message-input" placeholder="Type your message here...">
+    <button id="voice-input-btn">Voice Input</button>
+
     <script>
         document.getElementById('message-input').addEventListener('keypress', function (e) {
             if (e.key === 'Enter') {
-                let message = e.target.value;
+                sendMessage(e.target.value);
                 e.target.value = '';
-                let chatContainer = document.getElementById('chat-container');
-                chatContainer.innerHTML += `<p><strong>You:</strong> ${message}</p>`;
-                
-                fetch('/chat', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/x-www-form-urlencoded'
-                    },
-                    body: `message=${message}`
-                })
-                .then(response => response.json())
-                .then(data => {
-                    chatContainer.innerHTML += `<p><strong>Companion:</strong> ${data.response}</p>`;
-                    chatContainer.scrollTop = chatContainer.scrollHeight;
-
-                    // Read aloud the response
-                    speak(data.response);
-                });
             }
         });
 
-        // Function to read aloud using Web Speech API
+        document.getElementById('voice-input-btn').addEventListener('click', function() {
+            startVoiceRecognition();
+        });
+
+        function sendMessage(message) {
+            let chatContainer = document.getElementById('chat-container');
+            chatContainer.innerHTML += `<p><strong>You:</strong> ${message}</p>`;
+                
+            fetch('/chat', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/x-www-form-urlencoded'
+                },
+                body: `message=${message}`
+            })
+            .then(response => response.json())
+            .then(data => {
+                chatContainer.innerHTML += `<p><strong>Companion:</strong> ${data.response}</p>`;
+                chatContainer.scrollTop = chatContainer.scrollHeight;
+
+                // Read aloud the response
+                speak(data.response);
+            })
+            .catch(error => {
+                console.error('Error:', error);
+            });
+        }
+
+        function startVoiceRecognition() {
+            const recognition = new webkitSpeechRecognition() || new SpeechRecognition();
+            recognition.lang = 'en-US';
+            recognition.start();
+
+            recognition.onresult = function(event) {
+                const transcript = event.results[0][0].transcript;
+                sendMessage(transcript);
+            };
+        }
+
         function speak(text) {
             const synth = window.speechSynthesis;
             const utterance = new SpeechSynthesisUtterance(text);
