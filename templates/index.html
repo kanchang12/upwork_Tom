@@ -97,7 +97,8 @@
 
         function sendMessage(message) {
             const chatContainer = document.getElementById('chat-container');
-            chatContainer.innerHTML += `<p><strong>You:</strong> ${message}</p>`;
+            chatContainer.innerHTML += `<p><strong>You:</strong> ${
+            ${message}</p>`;
 
             fetch('/chat', {
                 method: 'POST',
@@ -111,13 +112,18 @@
                 if (contentType && contentType.indexOf('application/json') !== -1) {
                     return response.json();
                 } else {
-                    return response.text();
+                    return response.text().then(text => {
+                        return { html_response: text };
+                    });
                 }
             })
             .then(data => {
-                if (typeof data === 'string') {
-                    // If HTML response, display it directly
-                    chatContainer.innerHTML += `<p><strong>Response:</strong> ${data}</p>`;
+                if (data.html_response) {
+                    // If HTML response, display the meaningful part
+                    const parser = new DOMParser();
+                    const doc = parser.parseFromString(data.html_response, 'text/html');
+                    const bodyText = doc.body.innerText.trim();
+                    chatContainer.innerHTML += `<p><strong>Response:</strong> ${bodyText}</p>`;
                 } else {
                     // If JSON response, handle it
                     if (data.error) {
