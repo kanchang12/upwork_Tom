@@ -28,7 +28,8 @@ def chat():
 
         if response.status_code == 200:
             make_response = response.json().get('response', 'Error: No response from Make.com')
-            print("Make.com response:", make_response)  # Ensure the response is printed to the logs
+            print("Make.com response:", make_response, file=sys.stdout)
+            
             return jsonify({"user_input": user_input, "response": make_response})
         else:
             error_message = 'Error: Failed to get a valid response from Make.com'
