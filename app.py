@@ -13,13 +13,13 @@ MAKE_COM_ENDPOINT = 'https://hook.eu2.make.com/kv24kv7cddrvnuundv60a7mdk99lmxsu'
 def home():
     return render_template('index.html')
 
-@app.route('/chat', methods=['GET', 'POST'])
+@app.route('/chat', methods=['POST'])
 def chat():
     try:
         user_input = request.form['message']
         
-        # Send a request to Make.com
-        make_response = requests.get(MAKE_COM_ENDPOINT, data={'message': user_input})
+        # Send a POST request to Make.com with user input
+        make_response = requests.post(MAKE_COM_ENDPOINT, json={'message': user_input})
         app.logger.info(f"Response status code from Make.com: {make_response.status_code}")
         
         # Artificial delay to simulate processing time
