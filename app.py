@@ -20,7 +20,11 @@ def process_response(response):
         # If parsing as JSON fails, assume it's HTML
         return {'html_response': response.text}
 
-@app.route('/', methods=['GET', 'POST'])
+@app.route('/')
+def home():
+    return render_template('index.html', response_data=None)
+
+@app.route('/chat', methods=['GET', 'POST'])
 def send_request():
     try:
         if request.method == 'GET':
@@ -39,7 +43,7 @@ def send_request():
         if response.status_code == 200:
             # Process the response
             processed_response = process_response(response)
-            return jsonify(processed_response)
+            return render_template('index.html', response_data=processed_response)
         else:
             return jsonify({'error': f'Request failed with status code {response.status_code}'})
 
