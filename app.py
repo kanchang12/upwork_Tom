@@ -13,7 +13,7 @@ MAKE_COM_ENDPOINT = 'https://hook.eu2.make.com/kv24kv7cddrvnuundv60a7mdk99lmxsu'
 def home():
     return render_template('index.html')
 
-@app.route('/chat', methods=['POST'])
+@app.route('/chat', methods=['GET', 'POST'])
 def chat():
     try:
         user_input = request.form['message']
