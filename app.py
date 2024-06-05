@@ -22,28 +22,23 @@ def process_response(response):
 
 @app.route('/')
 def home():
-    return render_template('index.html', response_data=None)
+    return render_template('index.html')
 
-@app.route('/chat', methods=['GET', 'POST'])
-def send_request():
+@app.route('/chat', methods=['POST'])
+def chat():
     try:
-        if request.method == 'GET':
-            # Get the message from query parameters
-            message = request.args.get('message')
-        elif request.method == 'POST':
-            # Get the message from form data or JSON payload
-            message = request.form.get('message') or request.json.get('message')
+        message = request.json.get('message')
 
         if not message:
             return jsonify({'error': 'No message provided'})
 
         # Send request to Make.com
-        response = requests.get(MAKE_COM_ENDPOINT, params={'message': message})
+        response = requests.post(MAKE_COM_ENDPOINT, json={'message': message})
 
         if response.status_code == 200:
             # Process the response
             processed_response = process_response(response)
-            return render_template('index.html', response_data=processed_response)
+            return jsonify(processed_response)
         else:
             return jsonify({'error': f'Request failed with status code {response.status_code}'})
 
