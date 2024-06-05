@@ -28,6 +28,9 @@ def chat():
 
         # Send HTTP POST request to Make.com with user input
         response = requests.post(MAKE_COM_ENDPOINT, json={'text': user_input})
+        app.logger.info(f"Response content: {response.content}")
+        app.logger.info(f"Response content: {response}")
+
         time.sleep(10)  # Wait for 10 seconds
 
         app.logger.info(f"Response status code: {response.status_code}")
