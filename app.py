@@ -2,6 +2,7 @@ from flask import Flask, render_template, request, jsonify, session
 import requests
 import sys
 import logging
+import time
 
 app = Flask(__name__)
 app.secret_key = 'your_secret_key'  # Replace with a strong secret key for session management
@@ -62,6 +63,7 @@ def chat():
 def callback():
     global processed_data
     try:
+        time.sleep(10)
         callback_data = request.get_json()
         app.logger.info(f"Callback data received: {callback_data}")
 
