@@ -1,5 +1,6 @@
 from flask import Flask, render_template, request, jsonify
 import requests
+from bs4 import BeautifulSoup
 import time
 import sys
 import logging
@@ -10,6 +11,7 @@ app = Flask(__name__)
 MAKE_COM_ENDPOINT = 'https://hook.eu2.make.com/kv24kv7cddrvnuundv60a7mdk99lmxsu'
 app.logger.addHandler(logging.StreamHandler(sys.stdout))
 app.logger.setLevel(logging.INFO)
+
 @app.route('/')
 def home():
     return render_template('index.html')
@@ -27,18 +29,29 @@ def chat():
         time.sleep(10)  # Consider asynchronous methods for better performance
 
         if response.status_code == 200:
-            make_response = response.json().get('response', 'Error: No response from Make.com')
-            print("Make.com response:", make_response, file=sys.stdout)
-            
-            return jsonify({"user_input": user_input, "response": make_response})
+            make_response = response.json().get('data', 'Error: No response from Make.com')
+
+            # Parse HTML response to extract message details
+            soup = BeautifulSoup(make_response, 'html.parser')
+            # Extract message subject
+            subject = soup.find('h2').text
+            # Extract message body
+            body = soup.find('p').text
+
+            # Log extracted subject and body
+            app.logger.info(f"Subject: {subject}")
+            app.logger.info(f"Body: {body}")
+
+            return jsonify({"user_input": user_input, "response_subject": subject, "response_body": body})
         else:
             error_message = 'Error: Failed to get a valid response from Make.com'
-            print(error_message)
-            return jsonify({"user_input": user_input, "response": error_message})
+            app.logger.error(error_message)
+            return jsonify({"user_input": user_input, "response_subject": None, "response_body": error_message})
 
     except Exception as e:
         error_message = 'An error occurred. Please try again later.'
-        return jsonify({"user_input": user_input, "response": error_message})
+        app.logger.error(f"Error: {error_message}")
+        return jsonify({"user_input": user_input, "response_subject": None, "response_body": error_message})
 
 if __name__ == '__main__':
     app.run(debug=True)
