@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Demo Companion APP</title>
+    <title>Chat Support</title>
     <style>
         body {
             display: flex;
@@ -13,7 +13,7 @@
             height: 100vh;
             margin: 0;
             font-family: Arial, sans-serif;
-            position: relative; /* Ensure positioning context for overlay */
+            position: relative;
         }
         
         .background-image {
@@ -24,8 +24,8 @@
             height: 100%;
             background-size: cover;
             background-repeat: no-repeat;
-            z-index: -1; /* Ensure it's behind other content */
-            opacity: 0.7; /* Adjust opacity as needed */
+            z-index: -1;
+            opacity: 0.7;
         }
         
         .overlay {
@@ -34,25 +34,25 @@
             left: 0;
             width: 100%;
             height: 100%;
-            background-color: rgba(10,10, 10, 0.2); /* Adjust transparency as needed */
-            z-index: -1; /* Ensure it's behind other content */
+            background-color: rgba(10, 10, 10, 0.2);
+            z-index: -1;
         }
         
         h1, p {
-            color: black; /* Set text color to black */
-            text-align: center; /* Center the text */
-            position: relative; /* Ensure positioning context */
-            z-index: 1; /* Bring the text above the background */
+            color: black;
+            text-align: center;
+            position: relative;
+            z-index: 1;
         }
         
         h1 {
-            margin-top: 50px; /* Adjust margin as needed */
-            font-size: 2em; /* Increase font size for emphasis */
+            margin-top: 50px;
+            font-size: 2em;
         }
         
         p {
-            font-size: 1.2em; /* Increase font size for emphasis */
-            margin-top: 20px; /* Adjust margin as needed */
+            font-size: 1.2em;
+            margin-top: 20px;
         }
         
         #chat-container {
@@ -63,29 +63,26 @@
             border: 1px solid #ccc;
             padding: 10px;
             overflow-y: scroll;
-            background-color: rgba(255, 255, 255); /* Light background with transparency */
+            background-color: rgba(255, 255, 255);
         }
         
         #message-input {
             width: calc(40%);
             padding: 10px;
             margin-top: 10px;
-            border: 1px solid #ccc; /* Light gray border */
-            border-radius: 5px; /* Rounded corners */
+            border: 1px solid #ccc;
+            border-radius: 5px;
         }
     </style>
 </head>
 <body>
     <h1>Chat Support</h1>
-   
-    <p></p>
     <div class="background-image"></div>
     <div class="overlay"></div>
     <div id="chat-container"></div>
-    
     <input type="text" id="message-input" placeholder="Type your message here...">
     <button id="voice-input-btn">Voice Input</button>
-  
+
     <script>
         document.getElementById('message-input').addEventListener('keypress', function (e) {
             if (e.key === 'Enter') {
@@ -99,39 +96,42 @@
         });
 
         function sendMessage(message) {
-    const chatContainer = document.getElementById('chat-container');
-    chatContainer.innerHTML += `<p><strong>You:</strong> ${message}</p>`;
+            const chatContainer = document.getElementById('chat-container');
+            chatContainer.innerHTML += `<p><strong>You:</strong> ${message}</p>`;
 
-    fetch('/chat', {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({ message: message })
-    })
-    .then(response => {
-        const contentType = response.headers.get('content-type');
-        if (contentType && contentType.indexOf('application/json') !== -1) {
-            return response.json();
-        } else {
-            return response.text();
+            fetch('/chat', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ message: message })
+            })
+            .then(response => {
+                const contentType = response.headers.get('content-type');
+                if (contentType && contentType.indexOf('application/json') !== -1) {
+                    return response.json();
+                } else {
+                    return response.text();
+                }
+            })
+            .then(data => {
+                if (typeof data === 'string') {
+                    // If HTML response, display it directly
+                    chatContainer.innerHTML += `<p><strong>Response:</strong> ${data}</p>`;
+                } else {
+                    // If JSON response, handle it
+                    if (data.error) {
+                        chatContainer.innerHTML += `<p><strong>Error:</strong> ${data.error}</p>`;
+                    } else {
+                        chatContainer.innerHTML += `<p><strong>Response:</strong> ${JSON.stringify(data)}</p>`;
+                    }
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                chatContainer.innerHTML += `<p><strong>Error:</strong> ${error}</p>`;
+            });
         }
-    })
-    .then(data => {
-        if (typeof data === 'string') {
-            // If HTML response, display it directly
-            chatContainer.innerHTML += data;
-        } else {
-            // If JSON response, handle it as before
-            // Handle the response data here
-        }
-    })
-    .catch(error => {
-        console.error('Error:', error);
-    });
-}
-
-
 
         function startVoiceRecognition() {
             const recognition = new (window.SpeechRecognition || window.webkitSpeechRecognition)();
@@ -142,15 +142,6 @@
                 const transcript = event.results[0][0].transcript;
                 sendMessage(transcript);
             };
-        }
-
-        function speak(text) {
-            const synth = window.speechSynthesis;
-            const utterance = new SpeechSynthesisUtterance(text);
-            utterance.lang = 'en-US';
-            utterance.pitch = 1;
-            utterance.rate = 1;
-            synth.speak(utterance);
         }
     </script>
 </body>
