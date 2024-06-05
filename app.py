@@ -1,4 +1,4 @@
-from flask import Flask, render_template, request, jsonify
+from flask import Flask, request, jsonify
 import requests
 from bs4 import BeautifulSoup
 import time
@@ -31,27 +31,19 @@ def chat():
         if response.status_code == 200:
             make_response = response.json().get('data', 'Error: No response from Make.com')
 
-            # Parse HTML response to extract message details
-            soup = BeautifulSoup(make_response, 'html.parser')
-            # Extract message subject
-            subject = soup.find('h2').text
-            # Extract message body
-            body = soup.find('p').text
+            # Log the Make.com response
+            app.logger.info(f"Make.com response: {make_response}")
 
-            # Log extracted subject and body
-            app.logger.info(f"Subject: {subject}")
-            app.logger.info(f"Body: {body}")
-
-            return jsonify({"user_input": user_input, "response_subject": subject, "response_body": body})
+            return jsonify({"user_input": user_input, "response": make_response})
         else:
             error_message = 'Error: Failed to get a valid response from Make.com'
             app.logger.error(error_message)
-            return jsonify({"user_input": user_input, "response_subject": None, "response_body": error_message})
+            return jsonify({"user_input": user_input, "response": error_message})
 
     except Exception as e:
         error_message = f'An error occurred: {str(e)}'
         app.logger.error(error_message)
-        return jsonify({"user_input": user_input, "response_subject": None, "response_body": error_message})
+        return jsonify({"user_input": user_input, "response": error_message})
 
 if __name__ == '__main__':
     app.run(debug=True)
