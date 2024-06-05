@@ -9,14 +9,16 @@ MAKE_COM_ENDPOINT = 'https://hook.eu2.make.com/kv24kv7cddrvnuundv60a7mdk99lmxsu'
 
 @app.route('/')
 def home():
-    # Pass any necessary context variables (e.g., 'response') to the template
-    return render_template('index.html', response="Hello from Flask!")
+    return render_template('index.html')
 
-@app.route('/chat', methods=['POST'])
+@app.route('/chat', methods=['GET', 'POST'])
 def chat():
     try:
-        user_input = request.form['message']
-
+        if request.method == 'POST':
+            user_input = request.form['message']
+        elif request.method == 'GET':
+            user_input = request.args.get('message')
+        
         # Send HTTP POST request to Make.com with user input
         response = requests.post(MAKE_COM_ENDPOINT, json={'text': user_input})
         time.sleep(10)  # Consider asynchronous methods for better performance
