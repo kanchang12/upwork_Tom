@@ -1,18 +1,16 @@
-from flask import Flask, render_template, request, jsonify, session
 import requests
+from flask import Flask, request, jsonify, session
 import sys
 import logging
 import time
 
 app = Flask(__name__)
-app.secret_key = 'your_secret_key'  # Replace with a strong secret key for session management
+app.secret_key = 'your_secret_key'
 
-# Replace with your Make.com webhook endpoint
 MAKE_COM_ENDPOINT = 'https://hook.eu2.make.com/kv24kv7cddrvnuundv60a7mdk99lmxsu'
 app.logger.addHandler(logging.StreamHandler(sys.stdout))
 app.logger.setLevel(logging.INFO)
 
-# Global variable to store callback data
 processed_data = None
 
 @app.route('/')
@@ -23,7 +21,6 @@ def home():
         callback_data = request.get_json()
         app.logger.info(f"Callback data received: {callback_data}")
 
-        # Store the processed data in session
         session['processed_data'] = callback_data
 
         return jsonify({"status": "success", "data": callback_data}), 200
@@ -56,13 +53,12 @@ def chat():
             return jsonify({"user_input": None, "response_subject": None, "response_body": error_message}), 400
 
         # Send HTTP POST request to Make.com with user input
-        response = requests.post(MAKE_COM_ENDPOINT, json={'text': user_input})
+        response = requests.post(MAKE_COM_ENDPOINT, json={'text': user_input}, headers={'Content-Type': 'application/json'})
         app.logger.info(f"Response status code: {response.status_code}")
         app.logger.info(f"Response content: {response.content}")
 
         if response.status_code == 200 and response.text == 'Accepted':
-            # Successfully sent request to Make.com
-            processed_data = None  # Reset processed data
+            processed_data = None
             return jsonify({"user_input": user_input, "response_subject": "Request Accepted", "response_body": "Processing, please wait for the result."})
         else:
             error_message = 'Error: Failed to get a valid response from Make.com'
