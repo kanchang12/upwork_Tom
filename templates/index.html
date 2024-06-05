@@ -3,151 +3,179 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Chat Support</title>
+    <title>Chat Panel</title>
     <style>
         body {
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            height: 100vh;
-            margin: 0;
             font-family: Arial, sans-serif;
-            position: relative;
         }
-
-        .background-image {
-            position: fixed;
-            top: 0;
-            left: 0;
+        .chat-container {
             width: 100%;
-            height: 100%;
-            background-size: cover;
-            background-repeat: no-repeat;
-            z-index: -1;
-            opacity: 0.7;
-        }
-
-        .overlay {
-            position: absolute;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background-color: rgba(10, 10, 10, 0.2);
-            z-index: -1;
-        }
-
-        h1, p {
-            color: black;
-            text-align: center;
-            position: relative;
-            z-index: 1;
-        }
-
-        h1 {
-            margin-top: 50px;
-            font-size: 2em;
-        }
-
-        p {
-            font-size: 1.2em;
-            margin-top: 20px;
-        }
-
-        #chat-container {
-            margin-top: 20px;
-            width: 50%;
             max-width: 600px;
-            height: 400px;
+            margin: 50px auto;
             border: 1px solid #ccc;
-            padding: 10px;
-            overflow-y: scroll;
-            background-color: rgba(255, 255, 255);
+            padding: 20px;
+            border-radius: 10px;
         }
-
-        #message-input {
-            width: calc(40%);
-            padding: 10px;
-            margin-top: 10px;
+        .messages {
             border: 1px solid #ccc;
+            padding: 10px;
+            height: 300px;
+            overflow-y: auto;
+            margin-bottom: 10px;
             border-radius: 5px;
+        }
+        .message {
+            margin: 5px 0;
+        }
+        .message.sent {
+            text-align: right;
+            color: blue;
+        }
+        .message.received {
+            text-align: left;
+            color: green;
+        }
+        .input-container {
+            display: flex;
+        }
+        .input-container input {
+            flex: 1;
+            padding: 10px;
+            border: 1px solid #ccc;
+            border-radius: 5px 0 0 5px;
+        }
+        .input-container button {
+            padding: 10px;
+            border: none;
+            background-color: #28a745;
+            color: white;
+            border-radius: 0 5px 5px 0;
+            cursor: pointer;
+        }
+        .input-container button:hover {
+            background-color: #218838;
         }
     </style>
 </head>
 <body>
-    <h1>Chat Support</h1>
-    <div class="background-image"></div>
-    <div class="overlay"></div>
-    <div id="chat-container"></div>
-    <input type="text" id="message-input" placeholder="Type your message here...">
-    <button id="voice-input-btn">Voice Input</button>
 
-    <script>
-        document.getElementById('message-input').addEventListener('keypress', function (e) {
-            if (e.key === 'Enter') {
-                sendMessage(e.target.value);
-                e.target.value = '';
-            }
-        });
+<div class="chat-container">
+    <div class="messages" id="messages"></div>
+    <div class="input-container">
+        <input type="text" id="messageInput" placeholder="Type your message...">
+        <button onclick="sendMessage()">Send</button>
+        <button onclick="startVoiceRecognition()">Voice Input</button>
+    </div>
+</div>
 
-        document.getElementById('voice-input-btn').addEventListener('click', function() {
-            startVoiceRecognition();
-        });
+<script>
+    async function sendMessage() {
+        const input = document.getElementById('messageInput');
+        const message = input.value.trim();
+        
+        if (message === '') {
+            return;
+        }
 
-        function sendMessage(message) {
-            const chatContainer = document.getElementById('chat-container');
-            chatContainer.innerHTML += `<p><strong>You:</strong> ${message}</p>`;
+        // Display sent message
+        displayMessage(message, 'sent');
 
-            fetch('/chat', {
+        // Clear the input field
+        input.value = '';
+
+        try {
+            const response = await fetch('https://hook.eu2.make.com/kv24kv7cddrvnuundv60a7mdk99lmxsu', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json'
                 },
-                body: JSON.stringify({ message: message })
-            })
-            .then(response => {
-                const contentType = response.headers.get('content-type');
-                if (contentType && contentType.indexOf('application/json') !== -1) {
-                    return response.json();
-                } else {
-                    return response.text().then(text => {
-                        return { html_response: text };
-                    });
-                }
-            })
-            .then(data => {
-                if (data.html_response) {
-                    // If HTML response, display the meaningful part
-                    const parser = new DOMParser();
-                    const doc = parser.parseFromString(data.html_response, 'text/html');
-                    const bodyText = doc.body.innerText.trim();
-                    chatContainer.innerHTML += `<p><strong>Response:</strong> ${bodyText}</p>`;
-                } else {
-                    // If JSON response, handle it
-                    if (data.error) {
-                        chatContainer.innerHTML += `<p><strong>Error:</strong> ${data.error}</p>`;
-                    } else {
-                        chatContainer.innerHTML += `<p><strong>Response:</strong> ${JSON.stringify(data)}</p>`;
-                    }
-                }
-            })
-            .catch(error => {
-                console.error('Error:', error);
-                chatContainer.innerHTML += `<p><strong>Error:</strong> ${error}</p>`;
+                body: JSON.stringify({ message })
             });
-        }
 
-        function startVoiceRecognition() {
-            const recognition = new (window.SpeechRecognition || window.webkitSpeechRecognition)();
-            recognition.lang = 'en-US';
-            recognition.start();
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
 
-            recognition.onresult = function(event) {
-                const transcript = event.results[0][0].transcript;
-                sendMessage(transcript);
-            };
+            // Poll for the final response
+            pollForResponse();
+        } catch (error) {
+            console.error('Error:', error);
+            displayMessage('Error: Unable to send message', 'received');
         }
-    </script>
+    }
+
+    async function pollForResponse() {
+        try {
+            // Wait for 10 seconds before polling
+            await new Promise(resolve => setTimeout(resolve, 10000));
+
+            const response = await fetch('https://hook.eu2.make.com/kv24kv7cddrvnuundv60a7mdk99lmxsu', {
+                method: 'GET',
+                headers: {
+                    'Content-Type': 'application/json'
+                }
+            });
+
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
+
+            const responseText = await response.text();
+            console.log('Final Response Text:', responseText);
+
+            const data = JSON.parse(responseText);
+            displayMessage(data.response || 'No response from server', 'received');
+        } catch (error) {
+            console.error('Error:', error);
+            displayMessage('Error: Unable to fetch final response', 'received');
+        }
+    }
+
+    function displayMessage(message, type) {
+        const messagesContainer = document.getElementById('messages');
+        const messageElement = document.createElement('div');
+        messageElement.classList.add('message', type);
+        messageElement.textContent = message;
+        messagesContainer.appendChild(messageElement);
+        messagesContainer.scrollTop = messagesContainer.scrollHeight;
+    }
+
+    function startVoiceRecognition() {
+        const recognition = new (window.SpeechRecognition || window.webkitSpeechRecognition)();
+        recognition.lang = 'en-US';
+        recognition.start();
+
+        recognition.onresult = function(event) {
+            const transcript = event.results[0][0].transcript;
+            sendMessageWithVoice(transcript);
+        };
+    }
+
+    function sendMessageWithVoice(message) {
+        // Display sent message
+        displayMessage(message, 'sent');
+
+        try {
+            const response = fetch('https://hook.eu2.make.com/kv24kv7cddrvnuundv60a7mdk99lmxsu', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ message })
+            });
+
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
+
+            // Poll for the final response
+            pollForResponse();
+        } catch (error) {
+            console.error('Error:', error);
+            displayMessage('Error: Unable to send message', 'received');
+        }
+    }
+</script>
+
 </body>
 </html>
