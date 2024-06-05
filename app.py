@@ -51,10 +51,13 @@ def webhook():
     data = request.get_json()
     print("Received data:", data)
     
+    # Extract the subject from the received data
+    subject = data.get("data", {}).get("subject", [""])[0]
+    
     # Here you can add code to process the received data
     # For example, send an email, save to a database, etc.
     
-    return jsonify({"status": "success", "message": "Data received", "data": data}), 200
+    return jsonify({"status": "success", "message": "Data received", "subject": subject}), 200
 
 if __name__ == '__main__':
     app.run(debug=True)
