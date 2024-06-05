@@ -23,6 +23,7 @@ def chat():
 
         if not user_input:
             error_message = "Error: No message provided"
+            app.logger.error(error_message)
             return jsonify({"user_input": None, "response_subject": None, "response_body": error_message}), 400
 
         # Send HTTP POST request to Make.com with user input
@@ -37,11 +38,14 @@ def chat():
                 make_response = response.json().get('data', 'Error: No response from Make.com')
                 return render_template('index.html', user_input=user_input, make_response=make_response)
             except ValueError as e:
+                app.logger.error(f"Error parsing response JSON: {str(e)}")
                 return jsonify({"error": str(e)}), 500
         else:
+            app.logger.error(f"Failed to get a valid response from Make.com. Status code: {response.status_code}")
             return jsonify({"error": "Failed to get a valid response from Make.com"}), 500
 
     except Exception as e:
+        app.logger.error(f"An error occurred: {str(e)}")
         return jsonify({"error": str(e)}), 500
 
 if __name__ == '__main__':
