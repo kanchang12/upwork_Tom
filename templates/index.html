@@ -109,11 +109,18 @@
         },
         body: JSON.stringify({ message: message })
     })
-    .then(response => response.json().catch(() => response.text())) // Try to parse as JSON, fallback to text if parsing fails
+    .then(response => {
+        const contentType = response.headers.get('content-type');
+        if (contentType && contentType.indexOf('application/json') !== -1) {
+            return response.json();
+        } else {
+            return response.text();
+        }
+    })
     .then(data => {
-        if (data.html_response) {
+        if (typeof data === 'string') {
             // If HTML response, display it directly
-            chatContainer.innerHTML += data.html_response;
+            chatContainer.innerHTML += data;
         } else {
             // If JSON response, handle it as before
             // Handle the response data here
@@ -123,6 +130,7 @@
         console.error('Error:', error);
     });
 }
+
 
 
         function startVoiceRecognition() {
