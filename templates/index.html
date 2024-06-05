@@ -84,10 +84,10 @@
     <div id="chat-container">
         <div id="response-details">
             <h2>Response Details</h2>
-            <p><strong>Subject:</strong> <span id="response-subject"></span></p>
-            <p><strong>Date:</strong> <span id="response-date"></span></p>
-            <p><strong>Sender:</strong> <span id="response-sender"></span></p>
-            <p><strong>Body:</strong> <span id="response-body"></span></p>
+            <p><strong>Subject:</strong> <span id="response-subject">{{ response_data['subject'] if response_data }}</span></p>
+            <p><strong>Date:</strong> <span id="response-date">{{ response_data['date'] if response_data }}</span></p>
+            <p><strong>Sender:</strong> <span id="response-sender">{{ response_data['sender'] if response_data }}</span></p>
+            <p><strong>Body:</strong> <span id="response-body">{{ response_data['body'] if response_data }}</span></p>
         </div>
     </div>
     
