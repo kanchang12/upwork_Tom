@@ -35,7 +35,7 @@ def chat():
 
         if response.status_code == 200:
             try:
-                make_response = response.json().get('data', 'Error: No response from Make.com')
+                make_response = response.choices[0].message['content']
                 return render_template('index.html', user_input=user_input, make_response=make_response)
             except ValueError as e:
                 app.logger.error(f"Error parsing response JSON: {str(e)}")
