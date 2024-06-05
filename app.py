@@ -1,75 +1,39 @@
+from flask import Flask, request, jsonify
 import requests
-from flask import Flask, request, jsonify, session
-import sys
-import logging
+import os
 import time
 
 app = Flask(__name__)
-app.secret_key = 'your_secret_key'
+app.secret_key = 'your_secret_key'  # Replace with your secret key
 
+# Replace with your Make.com webhook endpoint
 MAKE_COM_ENDPOINT = 'https://hook.eu2.make.com/kv24kv7cddrvnuundv60a7mdk99lmxsu'
-app.logger.addHandler(logging.StreamHandler(sys.stdout))
-app.logger.setLevel(logging.INFO)
-
-processed_data = None
 
 @app.route('/')
 def home():
-    global processed_data
-    try:
-        time.sleep(10)
-        callback_data = request.get_json()
-        app.logger.info(f"Callback data received: {callback_data}")
-
-        session['processed_data'] = callback_data
-
-        return jsonify({"status": "success", "data": callback_data}), 200
-
-    except Exception as e:
-        error_message = f'An error occurred in callback: {str(e)}'
-        app.logger.error(error_message)
-        return jsonify({"status": "error", "message": error_message}), 500
-        
     return render_template('index.html')
 
-@app.route('/chat', methods=['GET', 'POST'])
+@app.route('/chat', methods=['POST'])
 def chat():
-    global processed_data
     try:
-        user_input = None
-        if request.method == 'POST':
-            if request.is_json:
-                request_data = request.get_json()
-                app.logger.info(f"Request JSON: {request_data}")
-                user_input = request_data.get('message')
-            else:
-                user_input = request.form.get('message')
-        elif request.method == 'GET':
-            user_input = request.args.get('message')
+        user_input = request.form['message']
         
-        if not user_input:
-            error_message = "Error: No message provided"
-            app.logger.error(error_message)
-            return jsonify({"user_input": None, "response_subject": None, "response_body": error_message}), 400
-
-        # Send HTTP POST request to Make.com with user input
-        response = requests.post(MAKE_COM_ENDPOINT, json={'text': user_input}, headers={'Content-Type': 'application/json'})
-        app.logger.info(f"Response status code: {response.status_code}")
-        app.logger.info(f"Response content: {response.content}")
-
-        if response.status_code == 200 and response.text == 'Accepted':
-            processed_data = None
-            return jsonify({"user_input": user_input, "response_subject": "Request Accepted", "response_body": "Processing, please wait for the result."})
-        else:
-            error_message = 'Error: Failed to get a valid response from Make.com'
-            app.logger.error(error_message)
-            return jsonify({"user_input": user_input, "response_subject": None, "response_body": error_message}), 500
-
+        # Send a request to Make.com
+        make_response = requests.post(MAKE_COM_ENDPOINT, data={'message': user_input})
+        app.logger.info(f"Response status code from Make.com: {make_response.status_code}")
+        
+        # Artificial delay to simulate processing time
+        time.sleep(10)
+        
+        # Your middle activity goes here
+        
+        # Example of Claude usage (replace with your logic)
+        response_content = "Your response from the middle activity"
+        
+        return jsonify({"user_input": user_input, "response": response_content})
+    
     except Exception as e:
-        error_message = f'An error occurred: {str(e)}'
-        app.logger.error(error_message)
-        return jsonify({"user_input": user_input, "response_subject": None, "response_body": error_message}), 500
-
+        return jsonify({"error": str(e)})
 
 if __name__ == '__main__':
     app.run(debug=True)
