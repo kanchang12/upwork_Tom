@@ -102,19 +102,16 @@ function sendMessage(message) {
     const chatContainer = document.getElementById('chat-container');
     chatContainer.innerHTML += `<p><strong>You:</strong> ${message}</p>`;
 
-    fetch(`/chat?message=${encodeURIComponent(message)}`, {
-        method: 'GET'
+    fetch('/chat', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ message: message })
     })
     .then(response => response.json())
     .then(data => {
-        if (data && data.response && data.response.response_subject !== "Request Accepted") {
-            // Display the actual response
-            chatContainer.innerHTML += `<p><strong>Message:</strong> ${data.response.message}</p>`;
-            speak(data.response.message);
-        } else {
-            console.error('No response data received');
-        }
-        chatContainer.scrollTop = chatContainer.scrollHeight;
+        // Handle the response data here
     })
     .catch(error => {
         console.error('Error:', error);
