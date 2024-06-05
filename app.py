@@ -1,63 +1,119 @@
 from flask import Flask, request, jsonify, render_template
+import dropbox
+from io import BytesIO
+import docx  # Use `python-docx` package
 import requests
-import os
+
 
 app = Flask(__name__)
 
-# Reading the secret key from environment variables
-app.secret_key = os.getenv('SECRET_KEY', 'your_default_secret_key')
+# Dropbox access token and file path
+DROPBOX_ACCESS_TOKEN = 'YOUR_DROPBOX_ACCESS_TOKEN'
+DROPBOX_FILE_PATH = '/path/to/your/document.docx'
 
-# Replace this with your Make.com webhook endpoint
-MAKE_COM_ENDPOINT = 'https://hook.eu2.make.com/kv24kv7cddrvnuundv60a7mdk99lmxsu'
+# Initialize Dropbox client
+dbx = dropbox.Dropbox(DROPBOX_ACCESS_TOKEN)
 
-def process_response(response):
-    try:
-        # Try to parse the response as JSON
-        json_response = response.json()
-        return json_response
-    except ValueError:
-        # If parsing as JSON fails, assume it's HTML
-        return {'html_response': response.text}
+# Hard-coded file names and paths
+DOCUMENTS = {
+    "rules.docx": "https://www.dropbox.com/scl/fi/xuc0nwgoxjpvh02zlj6j6/rules.docx?rlkey=8udh1aziazvmy4zevyaojhu1w&st=kx7gtc5y&dl=0",
+    "tasks.docx": "https://www.dropbox.com/scl/fi/k8cabdo6m35awe4ls0hi6/tasks.docx?rlkey=mklplg356j2cn8r457kiwh277&st=89yjka4t&dl=0"
+}
+
+# Claude AI API endpoint and headers
+CLAUDE_API_URL = 'https://api.claude.ai/your_endpoint'
+CLAUDE_API_HEADERS = {
+    'Authorization': 'Bearer YOUR_CLAUDE_API_KEY',
+    'Content-Type': 'application/json'
+}
 
 @app.route('/')
-def home():
+def index():
     return render_template('index.html')
 
-@app.route('/chat', methods=['POST'])
-def chat():
-    try:
-        message = request.json.get('message')
-
-        if not message:
-            return jsonify({'error': 'No message provided'})
-
-        # Send request to Make.com
-        response = requests.post(MAKE_COM_ENDPOINT, json={'message': message})
-
-        if response.status_code == 200:
-            pass
-            # Process the response
-            #processed_response = process_response(response)
-            #return jsonify(processed_response)
-        else:
-            pass
-            #return jsonify({'error': f'Request failed with status code {response.status_code}'})
-
-    except Exception as e:
-        return jsonify({'error': str(e)})
-
-@app.route('/webhook', methods=['POST'])
-def webhook():
-    data = request.get_json()
-    print("Received data:", data)
+@app.route('/process', methods=['POST'])
+def process():
+    user_input = request.json.get('user_input')
     
-    # Extract the subject from the received data
-    subject = data.get("data", {}).get("subject", [""])[0]
+    # Send the command to Claude AI
+    response = requests.post(CLAUDE_API_URL, headers=CLAUDE_API_HEADERS, json={'input': user_input})
+    response_data = response.json()
     
-    # Here you can add code to process the received data
-    # For example, send an email, save to a database, etc.
+    # Process the response from Claude AI
+    action = response_data['action']
+    args = response_data['args']
     
-    return jsonify({"status": "success", "message": "Data received", "subject": subject}), 200
+    if action == 'FETCH RECORDS':
+        result = fetch_record(args['file_name'], args['variable_name'])
+    elif action == 'UPDATE DOCUMENT':
+        result = update_document(args['file_name'], args['variable_name'], args['new_value'])
+    elif action == 'ADD NEW RECORD':
+        result = add_new_record(args['file_name'], args['record'])
+    elif action == 'ADD ALERT':
+        result = add_alert(args['alert'])
+    elif action == 'EXECUTE ALERT':
+        result = execute_alert(args['alert_id'])
+    else:
+        result = 'Unknown action'
+    
+    return jsonify({'result': result})
+
+def fetch_record(file_name, variable_name):
+    # Read the document from Dropbox
+    _, res = dbx.files_download(f'/path/to/your/{file_name}')
+    doc = docx.Document(BytesIO(res.content))
+    
+    # Search for the variable name in the document
+    for paragraph in doc.paragraphs:
+        if variable_name in paragraph.text:
+            return paragraph.text
+    
+    return f'{variable_name} not found in {file_name}'
+
+def update_document(file_name, variable_name, new_value):
+    # Read the document from Dropbox
+    _, res = dbx.files_download(f'/path/to/your/{file_name}')
+    doc = docx.Document(BytesIO(res.content))
+    
+    # Update the document with the new value
+    for paragraph in doc.paragraphs:
+        if variable_name in paragraph.text:
+            paragraph.text = paragraph.text.replace(variable_name, new_value)
+            break
+    
+    # Save the updated document back to Dropbox
+    updated_content = doc_to_bytes(doc)
+    dbx.files_upload(updated_content, f'/path/to/your/{file_name}', mode=dropbox.files.WriteMode.overwrite)
+    
+    return f'Document {file_name} updated with {new_value}'
+
+def add_new_record(file_name, record):
+    # Read the document from Dropbox
+    _, res = dbx.files_download(f'/path/to/your/{file_name}')
+    doc = docx.Document(BytesIO(res.content))
+    
+    # Add the new record
+    doc.add_paragraph(record)
+    
+    # Save the updated document back to Dropbox
+    updated_content = doc_to_bytes(doc)
+    dbx.files_upload(updated_content, f'/path/to/your/{file_name}', mode=dropbox.files.WriteMode.overwrite)
+    
+    return f'New record added to {file_name}'
+
+def add_alert(alert):
+    # Placeholder: Implement your alert logic
+    return f'Alert added: {alert}'
+
+def execute_alert(alert_id):
+    # Placeholder: Implement your alert execution logic
+    return f'Alert executed: {alert_id}'
+
+def doc_to_bytes(doc):
+    byte_stream = BytesIO()
+    doc.save(byte_stream)
+    byte_stream.seek(0)
+    return byte_stream.read()
 
 if __name__ == '__main__':
     app.run(debug=True)
