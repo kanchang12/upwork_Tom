@@ -98,26 +98,33 @@
             startVoiceRecognition();
         });
 
-function sendMessage(message) {
-    const chatContainer = document.getElementById('chat-container');
-    chatContainer.innerHTML += `<p><strong>You:</strong> ${message}</p>`;
+        function sendMessage(message) {
+            const chatContainer = document.getElementById('chat-container');
+            chatContainer.innerHTML += `<p><strong>You:</strong> ${message}</p>`;
 
-    fetch('/chat', {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({ message: message })
-    })
-    .then(response => response.json())
-    .then(data => {
-        // Handle the response data here
-    })
-    .catch(error => {
-        console.error('Error:', error);
-    });
-}
-
+            fetch('/chat', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ message: message })
+            })
+            .then(response => response.json())
+            .then(data => {
+                // Handle the response data here
+                // Check if response contains HTML
+                if (data.html_response) {
+                    // Append HTML content to chat container
+                    chatContainer.innerHTML += data.html_response;
+                } else {
+                    // Append JSON response to chat container
+                    chatContainer.innerHTML += `<p><strong>Response:</strong> ${data.response}</p>`;
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+            });
+        }
 
         function startVoiceRecognition() {
             const recognition = new (window.SpeechRecognition || window.webkitSpeechRecognition)();
