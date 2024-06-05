@@ -28,8 +28,8 @@ def chat():
         
         else:
             error_message = 'Error: Failed to get a valid response from Make.com'
-    print(error_message)
-    return jsonify({"user_input": user_input, "response": error_message})
+            print(error_message)
+            return jsonify({"user_input": user_input, "response": error_message})
 
     except Exception as e:
         error_message = 'An error occurred. Please try again later.'
