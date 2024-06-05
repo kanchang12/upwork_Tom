@@ -1,12 +1,15 @@
 from flask import Flask, render_template, request, jsonify
 import requests
 import time
+import sys
+import logging
 
 app = Flask(__name__)
 
 # Replace with your Make.com webhook endpoint
 MAKE_COM_ENDPOINT = 'https://hook.eu2.make.com/kv24kv7cddrvnuundv60a7mdk99lmxsu'
-
+app.logger.addHandler(logging.StreamHandler(sys.stdout))
+app.logger.setLevel(logging.INFO)
 @app.route('/')
 def home():
     return render_template('index.html')
