@@ -81,18 +81,21 @@
     <p>If you still need a CV, just ask for it</p>
     <div class="background-image"></div>
     <div class="overlay"></div>
-    <div id="chat-container"></div>
-    
-    <input type="text" id="message-input" placeholder="Type your message here...">
-    <button id="voice-input-btn">Voice Input</button>
-    
-    <div id="response-details">
+    <div id="chat-container">
+<div id="response-details">
         <h2>Response Details</h2>
         <p><strong>Subject:</strong> <span id="response-subject"></span></p>
         <p><strong>Date:</strong> <span id="response-date"></span></p>
         <p><strong>Sender:</strong> <span id="response-sender"></span></p>
         <p><strong>Body:</strong> <span id="response-body"></span></p>
     </div>
+        
+    </div>
+    
+    <input type="text" id="message-input" placeholder="Type your message here...">
+    <button id="voice-input-btn">Voice Input</button>
+    
+    
   
     <script>
         document.getElementById('message-input').addEventListener('keypress', function (e) {
@@ -110,12 +113,8 @@
             const chatContainer = document.getElementById('chat-container');
             chatContainer.innerHTML += `<p><strong>You:</strong> ${message}</p>`;
 
-            fetch('/chat', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/x-www-form-urlencoded'
-                },
-                body: `message=${message}`
+            fetch(`/chat?message=${encodeURIComponent(message)}`, {
+                method: 'GET'
             })
             .then(response => response.json())
             .then(data => {
