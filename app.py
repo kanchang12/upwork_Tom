@@ -1,5 +1,7 @@
 from flask import Flask, render_template, request, jsonify
 import requests
+from bs4 import BeautifulSoup
+import time
 import sys
 import logging
 
@@ -7,10 +9,8 @@ app = Flask(__name__)
 
 # Replace with your Make.com webhook endpoint
 MAKE_COM_ENDPOINT = 'https://hook.eu2.make.com/kv24kv7cddrvnuundv60a7mdk99lmxsu'
-
-# Configure logging to print to console
 app.logger.addHandler(logging.StreamHandler(sys.stdout))
-app.logger.setLevel(logging.DEBUG)  # Set the logging level to DEBUG
+app.logger.setLevel(logging.INFO)
 
 @app.route('/')
 def home():
@@ -18,33 +18,51 @@ def home():
 
 @app.route('/chat', methods=['GET', 'POST'])
 def chat():
+    user_input = None
     try:
         if request.method == 'POST':
-            user_input = request.form['message']
+            app.logger.info("POST request received")
+            app.logger.info(f"Request data: {request.data}")
+            app.logger.info(f"Request form: {request.form}")
+            if request.is_json:
+                user_input = request.json.get('message')
+            else:
+                user_input = request.form.get('message')
         elif request.method == 'GET':
+            app.logger.info("GET request received")
             user_input = request.args.get('message')
-        
+
+        if not user_input:
+            raise ValueError("No 'message' field found in the request")
+
         # Send HTTP POST request to Make.com with user input
         response = requests.post(MAKE_COM_ENDPOINT, json={'text': user_input})
-        response.raise_for_status()  # Raise an exception for 4XX or 5XX status codes
+        time.sleep(10)  # Consider asynchronous methods for better performance
 
-        make_response = response.json().get('data', 'Error: No response from Make.com')
+        if response.status_code == 200:
+            make_response = response.json().get('data', 'Error: No response from Make.com')
 
-        # Log the user input and response
-        app.logger.info(f"User Input: {user_input}")
-        app.logger.info(f"Make.com Response: {make_response}")
+            # Parse HTML response to extract message details
+            soup = BeautifulSoup(make_response, 'html.parser')
+            # Extract message subject
+            subject = soup.find('h2').text if soup.find('h2') else "No subject found"
+            # Extract message body
+            body = soup.find('p').text if soup.find('p') else "No body found"
 
-        return jsonify({"user_input": user_input, "response": make_response})
+            # Log extracted subject and body
+            app.logger.info(f"Subject: {subject}")
+            app.logger.info(f"Body: {body}")
 
-    except requests.exceptions.RequestException as e:
-        error_message = f'Error: {str(e)}'
-        app.logger.error(error_message)
-        return jsonify({"user_input": user_input, "response": error_message})
+            return jsonify({"user_input": user_input, "response_subject": subject, "response_body": body})
+        else:
+            error_message = 'Error: Failed to get a valid response from Make.com'
+            app.logger.error(error_message)
+            return jsonify({"user_input": user_input, "response_subject": None, "response_body": error_message})
 
     except Exception as e:
         error_message = f'An error occurred: {str(e)}'
         app.logger.error(error_message)
-        return jsonify({"user_input": user_input, "response": error_message})
+        return jsonify({"user_input": user_input, "response_subject": None, "response_body": error_message})
 
 if __name__ == '__main__':
     app.run(debug=True)
