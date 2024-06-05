@@ -35,14 +35,26 @@ def chat():
         response = requests.post(MAKE_COM_ENDPOINT, json={'message': message})
 
         if response.status_code == 200:
+            pass
             # Process the response
-            processed_response = process_response(response)
-            return jsonify(processed_response)
+            #processed_response = process_response(response)
+            #return jsonify(processed_response)
         else:
-            return jsonify({'error': f'Request failed with status code {response.status_code}'})
+            pass
+            #return jsonify({'error': f'Request failed with status code {response.status_code}'})
 
     except Exception as e:
         return jsonify({'error': str(e)})
+
+@app.route('/webhook', methods=['POST'])
+def webhook():
+    data = request.get_json()
+    print("Received data:", data)
+    
+    # Here you can add code to process the received data
+    # For example, send an email, save to a database, etc.
+    
+    return jsonify({"status": "success", "message": "Data received", "data": data}), 200
 
 if __name__ == '__main__':
     app.run(debug=True)
