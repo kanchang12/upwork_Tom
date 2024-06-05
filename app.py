@@ -23,6 +23,7 @@ def chat():
 
         if response.status_code == 200:
             make_response = response.json().get('response', 'Error: No response from Make.com')
+            prinr(make_response)
             return jsonify({"user_input": user_input, "response": make_response})
         else:
             return jsonify({"user_input": user_input, "response": f"Error: Failed to send message to Make.com (HTTP {response.status_code})"})
