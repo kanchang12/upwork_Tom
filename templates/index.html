@@ -78,18 +78,10 @@
 <body>
     <h1>Chat Support</h1>
    
-    <p>If you still need a CV, just ask for it</p>
+    <p></p>
     <div class="background-image"></div>
     <div class="overlay"></div>
-    <div id="chat-container">
-        <div id="response-details">
-            <h2>Response Details</h2>
-            <p><strong>Subject:</strong> <span id="response-subject">{{ response_data['subject'] if response_data }}</span></p>
-            <p><strong>Date:</strong> <span id="response-date">{{ response_data['date'] if response_data }}</span></p>
-            <p><strong>Sender:</strong> <span id="response-sender">{{ response_data['sender'] if response_data }}</span></p>
-            <p><strong>Body:</strong> <span id="response-body">{{ response_data['body'] if response_data }}</span></p>
-        </div>
-    </div>
+    <div id="chat-container"></div>
     
     <input type="text" id="message-input" placeholder="Type your message here...">
     <button id="voice-input-btn">Voice Input</button>
@@ -116,11 +108,8 @@
             .then(response => response.json())
             .then(data => {
                 if (data && data.response) {
-                    document.getElementById('response-subject').textContent = data.response.subject || '';
-                    document.getElementById('response-date').textContent = data.response.date || '';
-                    document.getElementById('response-sender').textContent = data.response.sender || '';
-                    document.getElementById('response-body').textContent = data.response.body || '';
-                    speak(data.response.body || '');
+                    chatContainer.innerHTML += `<p><strong>Message:</strong> ${data.response.message}</p>`;
+                    speak(data.response.message);
                 } else {
                     console.error('No response data received');
                 }
