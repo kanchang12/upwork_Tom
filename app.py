@@ -45,33 +45,11 @@ def chat():
 
         if response.status_code == 200:
             try:
-                make_response = response.json().get('data', 'Error: No response from Make.com')
-
-                # Parse HTML response to extract message details
-                soup = BeautifulSoup(make_response, 'html.parser')
-                # Extract message subject
-                subject = soup.find('h2').text if soup.find('h2') else "No subject found"
-                # Extract message body
-                body = soup.find('p').text if soup.find('p') else "No body found"
-
-                # Log extracted subject and body
-                app.logger.info(f"Subject: {subject}")
-                app.logger.info(f"Body: {body}")
-
-                return jsonify({"user_input": user_input, "response_subject": subject, "response_body": body})
-            except ValueError as e:
-                error_message = f"Error parsing response JSON: {str(e)}"
-                app.logger.error(error_message)
-                return jsonify({"user_input": user_input, "response_subject": None, "response_body": error_message}), 500
-        else:
-            error_message = 'Error: Failed to get a valid response from Make.com'
-            app.logger.error(error_message)
-            return jsonify({"user_input": user_input, "response_subject": None, "response_body": error_message}), 500
-
-    except Exception as e:
-        error_message = f'An error occurred: {str(e)}'
-        app.logger.error(error_message)
-        return jsonify({"user_input": user_input, "response_subject": None, "response_body": error_message}), 500
+                request_data = request.get_json()
+                user_input = request_data.get('message', 'No message provided')
+                return jsonify({"user_input": user_input})
+            except Exception as e:
+                return jsonify({"error": str(e)})
 
 if __name__ == '__main__':
     app.run(debug=True)
