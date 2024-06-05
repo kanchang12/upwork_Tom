@@ -124,11 +124,20 @@
                 throw new Error(`HTTP error! status: ${response.status}`);
             }
 
-            const responseText = await response.text();
-            console.log('Final Response Text:', responseText);
+            const contentType = response.headers.get('content-type');
+            let data;
 
-            const data = JSON.parse(responseText);
-            displayMessage(data.response || 'No response from server', 'received');
+            if (contentType && contentType.indexOf('application/json') !== -1) {
+                data = await response.json();
+            } else {
+                data = await response.text();
+            }
+
+            if (typeof data === 'string') {
+                displayMessage(data, 'received');
+            } else {
+                displayMessage(data.response || 'No response from server', 'received');
+            }
         } catch (error) {
             console.error('Error:', error);
             displayMessage('Error: Unable to fetch final response', 'received');
