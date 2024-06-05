@@ -18,7 +18,22 @@ processed_data = None
 @app.route('/')
 def home():
     global processed_data
-    return render_template('index.html', response_data=processed_data)
+    try:
+        time.sleep(10)
+        callback_data = request.get_json()
+        app.logger.info(f"Callback data received: {callback_data}")
+
+        # Store the processed data in session
+        session['processed_data'] = callback_data
+
+        return jsonify({"status": "success", "data": callback_data}), 200
+
+    except Exception as e:
+        error_message = f'An error occurred in callback: {str(e)}'
+        app.logger.error(error_message)
+        return jsonify({"status": "error", "message": error_message}), 500
+        
+    return render_template('index.html')
 
 @app.route('/chat', methods=['GET', 'POST'])
 def chat():
@@ -59,23 +74,6 @@ def chat():
         app.logger.error(error_message)
         return jsonify({"user_input": user_input, "response_subject": None, "response_body": error_message}), 500
 
-@app.route('/callback', methods=['POST'])
-def callback():
-    global processed_data
-    try:
-        time.sleep(10)
-        callback_data = request.get_json()
-        app.logger.info(f"Callback data received: {callback_data}")
-
-        # Store the processed data in session
-        session['processed_data'] = callback_data
-
-        return jsonify({"status": "success", "data": callback_data}), 200
-
-    except Exception as e:
-        error_message = f'An error occurred in callback: {str(e)}'
-        app.logger.error(error_message)
-        return jsonify({"status": "error", "message": error_message}), 500
 
 if __name__ == '__main__':
     app.run(debug=True)
