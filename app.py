@@ -19,7 +19,7 @@ def chat():
         user_input = request.form['message']
         
         # Send a request to Make.com
-        make_response = requests.post(MAKE_COM_ENDPOINT, data={'message': user_input})
+        make_response = requests.get(MAKE_COM_ENDPOINT, data={'message': user_input})
         app.logger.info(f"Response status code from Make.com: {make_response.status_code}")
         
         # Artificial delay to simulate processing time
