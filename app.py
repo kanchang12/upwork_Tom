@@ -23,10 +23,11 @@ def chat():
         if request.method == 'POST':
             if request.is_json:
                 request_data = request.get_json()
-                app.logger.info(f"Request JSON: {request_data}")
                 user_input = request_data.get('message')
             else:
                 user_input = request.form.get('message')
+        elif request.method == 'GET':
+            user_input = request.args.get('message')
         elif request.method == 'GET':
             user_input = request.args.get('message')
         
