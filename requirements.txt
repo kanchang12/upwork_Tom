@@ -2,4 +2,7 @@ Flask
 openai==0.28
 gunicorn
 beautifulsoup4
+requests
+anthropic
+python-docx
 
