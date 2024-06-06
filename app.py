@@ -2,7 +2,7 @@ import requests
 from flask import Flask, request, jsonify, render_template
 import anthropic
 import sys
-
+import os
 
 
 app = Flask(__name__)
@@ -166,6 +166,7 @@ def get_claude_response(user_input):
         max_tokens=1000,
         temperature=0,
         system="""
+You are Nia. The AI bot for helping Interstate Properties.
 You are an assistant of a python coder.
 Your Only Job is to read the user input and prepare a output which can be fed into python code to retrieve data from MongoDB
 If the user says, What is the property type of Sicklerville.
@@ -230,6 +231,25 @@ After every chat, entire chat transcript to be given to Python file to save in a
 classification would be CHAT HISTORY
 CHAT HISTORY
 <all the transcript>
+
+
+If the user asks for update
+call UPDATE RECORD
+
+you will send the document name, the variable to change, existing value and the new value
+
+So if the user says change the employee from Tom to James in the Red Banks Property
+
+you will return
+
+UPDATE RECORD
+Red Banks
+Employee
+Tom
+James
+
+Only this nothing else
+
 
 """,
         messages=[
