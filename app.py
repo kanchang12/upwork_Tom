@@ -1,119 +1,291 @@
-from flask import Flask, request, jsonify, render_template
-import dropbox
-from io import BytesIO
-import docx  # Use `python-docx` package
 import requests
+from flask import Flask, request, jsonify, render_template
+import anthropic
+import sys
+
 
 
 app = Flask(__name__)
 
-# Dropbox access token and file path
-DROPBOX_ACCESS_TOKEN = 'YOUR_DROPBOX_ACCESS_TOKEN'
-DROPBOX_FILE_PATH = '/path/to/your/document.docx'
+MONGODB_API_URL = "https://eu-west-2.aws.data.mongodb-api.com/app/data-adgmytr/endpoint/data/v1/action/findOne"
+MONGODB_API_KEY = os.getenv('Mongo_API')
 
-# Initialize Dropbox client
-dbx = dropbox.Dropbox(DROPBOX_ACCESS_TOKEN)
 
-# Hard-coded file names and paths
+
 DOCUMENTS = {
-    "rules.docx": "https://www.dropbox.com/scl/fi/xuc0nwgoxjpvh02zlj6j6/rules.docx?rlkey=8udh1aziazvmy4zevyaojhu1w&st=kx7gtc5y&dl=0",
-    "tasks.docx": "https://www.dropbox.com/scl/fi/k8cabdo6m35awe4ls0hi6/tasks.docx?rlkey=mklplg356j2cn8r457kiwh277&st=89yjka4t&dl=0"
+    "Sicklerville.docx": "_id 66618e8e367ca0e0be2fb776 \nfilename Sicklerville\nfile_type docx"
 }
 
-# Claude AI API endpoint and headers
-CLAUDE_API_URL = 'https://api.claude.ai/your_endpoint'
-CLAUDE_API_HEADERS = {
-    'Authorization': 'Bearer YOUR_CLAUDE_API_KEY',
-    'Content-Type': 'application/json'
-}
+def save_chat_history(transcript):
+    data = {"classification": "CHAT HISTORY", "transcript": transcript}
+    headers = {'Content-Type': 'application/json', 'api-key': MONGODB_API_KEY}
+    response = requests.post(MONGODB_API_URL, json=data, headers=headers)
+    return response.json()
+
+import requests
+
+def fetch_record(file_name, variable_name):
+    print("in mongo")
+  
+    
+    # MongoDB API request payload
+    payload = {
+    "collection": "upworktom",
+    "database": "upwrok",
+    "dataSource": "Cluster0",
+    "projection": {
+        "_id": 0,
+        "filename": file_name,
+        "content": 1
+    },
+    }
+        
+    # MongoDB API headers
+    headers = {
+        'Content-Type': 'application/json',
+        'Access-Control-Request-Headers': '*',
+        'api-key': MONGODB_API_KEY,
+    }
+    
+    # MongoDB API URL
+    url = MONGODB_API_URL
+    
+    # Send request to MongoDB API
+    response = requests.post(url, headers=headers, json=payload)
+    
+    # Check if the request was successful
+    if response.status_code == 200:
+        data = response.json()
+        content = data.get('document', {}).get('content', '')
+
+        # Split content into lines
+        lines = content.split('\n')
+
+        # Initialize variable to store the value
+        value = None
+
+        # Search for the variable_name in each line
+        for line in lines:
+            # Split line by ':'
+            parts = line.split(':')
+            if len(parts) == 2:
+                key = parts[0].strip()
+                val = parts[1].strip()
+                if key.lower() == variable_name.lower():  # Case-insensitive comparison
+                    value = val
+                    break
+        print(value)
+
+        if value is not None:
+            return value
+        else:
+            return f"Variable '{variable_name}' not found in the document content."
+    else:
+        return f"Failed to fetch record: {response.text}"
+
+
+
+
+def add_record(entity, name):
+    # Placeholder function to add record
+    pass
+
+def update_record(entity, name):
+    # Placeholder function to update record
+    pass
+
+def set_alert():
+    # Placeholder function to set alert
+    pass
 
 @app.route('/')
 def index():
     return render_template('index.html')
 
-@app.route('/process', methods=['POST'])
-def process():
+
+@app.route('/process_command', methods=['POST'])
+def process_command():
     user_input = request.json.get('user_input')
     
-    # Send the command to Claude AI
-    response = requests.post(CLAUDE_API_URL, headers=CLAUDE_API_HEADERS, json={'input': user_input})
-    response_data = response.json()
+    # Get Claude response
+    claude_response1 = get_claude_response(user_input)
+    print("User Input:", user_input)
+    print("Claude Response:", claude_response1)
+
+    # Convert response items to text
+    claude_response = [item.text for item in claude_response1 if hasattr(item, 'text')]
     
     # Process the response from Claude AI
-    action = response_data['action']
-    args = response_data['args']
-    
-    if action == 'FETCH RECORDS':
-        result = fetch_record(args['file_name'], args['variable_name'])
-    elif action == 'UPDATE DOCUMENT':
-        result = update_document(args['file_name'], args['variable_name'], args['new_value'])
-    elif action == 'ADD NEW RECORD':
-        result = add_new_record(args['file_name'], args['record'])
-    elif action == 'ADD ALERT':
-        result = add_alert(args['alert'])
-    elif action == 'EXECUTE ALERT':
-        result = execute_alert(args['alert_id'])
-    else:
-        result = 'Unknown action'
-    
-    return jsonify({'result': result})
+    results = []
+    for item in claude_response:
+        if isinstance(item, str):
+            lines = item.split('\n')
+            if lines:
+                action = lines[0].strip()
+                args1 = lines[1:]  # Store the args in args1
+                args_without_quotes = [arg.strip().strip('"') for arg in args1]  # Strip quotes from args
+                args = [arg.replace('_', ' ') for arg in args_without_quotes]  # Replace underscores with spaces
+                print("Action:", action)
+                print("Args:", args)
+                if 'FETCH' in action and 'RECORD' in action:
+                    print("yes")
+                    if len(args) >= 2:
+                        file_name = args[0]
+                        variable_name = args[1]
+                        result = fetch_record(file_name, variable_name)
+                elif action == 'UPDATE DOCUMENT':
+                    # Handle UPDATE DOCUMENT similarly
+                    pass
+                elif action == 'ADD NEW RECORD':
+                    # Handle ADD NEW RECORD similarly
+                    pass
+                elif action == 'ADD ALERT':
+                    # Handle ADD ALERT similarly
+                    pass
+                elif action == 'EXECUTE ALERT':
+                    # Handle EXECUTE ALERT similarly
+                    pass
+                else:
+                    result = f'Unknown action: {action}'
+                results.append(result)
+            else:
+                results.append('Empty response line')
+        else:
+            results.append(f'Invalid response item: {item}')
 
-def fetch_record(file_name, variable_name):
-    # Read the document from Dropbox
-    _, res = dbx.files_download(f'/path/to/your/{file_name}')
-    doc = docx.Document(BytesIO(res.content))
-    
-    # Search for the variable name in the document
-    for paragraph in doc.paragraphs:
-        if variable_name in paragraph.text:
-            return paragraph.text
-    
-    return f'{variable_name} not found in {file_name}'
+    print("Results:", results)
 
-def update_document(file_name, variable_name, new_value):
-    # Read the document from Dropbox
-    _, res = dbx.files_download(f'/path/to/your/{file_name}')
-    doc = docx.Document(BytesIO(res.content))
-    
-    # Update the document with the new value
-    for paragraph in doc.paragraphs:
-        if variable_name in paragraph.text:
-            paragraph.text = paragraph.text.replace(variable_name, new_value)
-            break
-    
-    # Save the updated document back to Dropbox
-    updated_content = doc_to_bytes(doc)
-    dbx.files_upload(updated_content, f'/path/to/your/{file_name}', mode=dropbox.files.WriteMode.overwrite)
-    
-    return f'Document {file_name} updated with {new_value}'
+    return jsonify({'results': results, 'claude_response': claude_response})
 
-def add_new_record(file_name, record):
-    # Read the document from Dropbox
-    _, res = dbx.files_download(f'/path/to/your/{file_name}')
-    doc = docx.Document(BytesIO(res.content))
-    
-    # Add the new record
-    doc.add_paragraph(record)
-    
-    # Save the updated document back to Dropbox
-    updated_content = doc_to_bytes(doc)
-    dbx.files_upload(updated_content, f'/path/to/your/{file_name}', mode=dropbox.files.WriteMode.overwrite)
-    
-    return f'New record added to {file_name}'
 
-def add_alert(alert):
-    # Placeholder: Implement your alert logic
-    return f'Alert added: {alert}'
+def get_claude_response(user_input):
+    print("in claude")
+    client = anthropic.Anthropic(api_key = os.environ.get("ANTHROPIC_API_KEY"))
+    message = client.messages.create(
+        model="claude-3-opus-20240229",
+        max_tokens=1000,
+        temperature=0,
+        system="""
+You are an assistant of a python coder.
+Your Only Job is to read the user input and prepare a output which can be fed into python code to retrieve data from MongoDB
+If the user says, What is the property type of Sicklerville.
+You will first make the classification
 
-def execute_alert(alert_id):
-    # Placeholder: Implement your alert execution logic
-    return f'Alert executed: {alert_id}'
+ADD RECORD
+UPDATE RECORD
+SET ALERT
+FETCH RECORD
 
-def doc_to_bytes(doc):
-    byte_stream = BytesIO()
-    doc.save(byte_stream)
-    byte_stream.seek(0)
-    return byte_stream.read()
+So, here it will be FETCH RECORD
+YOU MUST RETURN THREE THINGS
+
+FETCH RECORD
+DOCUMENT NAME
+VARIABLE
+
+LIKE FETCH RECORD
+SICKLERVILLE
+PLATFORMED ADVERTISED
+
+
+Then find the variables
+Sicklerville
+location
+
+you will ONLY return these to python code to process further
+NO EXPLANATION
+NO ADDITIONAL WORDS
+NO ETHICAL DILEMMA OF READING OTHER STUFF
+YOU GET A DATA, CLASSIFY AND RETURN CLASSIFICATION AND VARIABLE NAMES
+THAT'S IT
+
+User asked:
+Hana has recently joined us. Add her in employee list
+
+
+
+ADD RECORD
+File name
+variable name
+
+ALSO
+
+USER PRONOUCIATIONS CAN BE DIFFRENT SO CHECK THE FILE NAME HERE TOO ENSURE
+
+Sicklerville
+
+At present following are the documents:
+
+_id 66618e8e367ca0e0be2fb776
+filename "Sicklerville"
+file_type "docx"
+
+_id 6661905358f2ab5c0b3f5ed1
+filename "Location-Cohost-Training-Manual_Reading"
+file_type "docx"
+
+Second task
+
+After every chat, entire chat transcript to be given to Python file to save in a master file
+classification would be CHAT HISTORY
+CHAT HISTORY
+<all the transcript>
+
+""",
+        messages=[
+            {"role": "user", "content": [{"type": "text", "text": user_input}]}
+            
+        ]
+    )
+    return message.content
+    print(message.content)
+
+def process_claude_response(response):
+
+    pass
+"""
+    results = []
+    for item in response:
+        if isinstance(item, str):
+            lines = item.split('\n')
+            if lines:
+                action = lines[0].strip()
+                print("Action:", action)  # Debugging print
+                args = [arg.strip("'") for arg in lines[1:] if arg.strip()]  # Remove single quotes and empty strings
+
+                if 'FETCH' in action and 'RECORD' in action:
+                    print("yes")
+                    if len(args) >= 2:
+                        file_name = args[0]
+                        variable_name = args[1]
+                        result = fetch_record(file_name, variable_name)
+                        print(result)
+                    else:
+                        result = 'Invalid arguments for FETCH RECORD'
+                elif action == 'CHAT HISTORY':
+                    # Save chat history to master database
+                    transcript = '\n'.join(args)
+                    save_chat_history(transcript)
+                    result = 'Chat history saved successfully'
+                else:
+                    result = f'Unknown action: {action}'
+                results.append(result)
+            else:
+                results.append('Empty response line')
+        else:
+            results.append(f'Invalid response item: {item}')
+    return results
+
+
+
+    print("Results:", results)
+    return results
+"""
+def find_best_match(partial_name, valid_names):
+    for name in valid_names:
+        if partial_name in name:
+            return name
+    return None
 
 if __name__ == '__main__':
     app.run(debug=True)
