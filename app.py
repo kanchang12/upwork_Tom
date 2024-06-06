@@ -145,6 +145,10 @@ def process_command():
                 elif action == 'EXECUTE ALERT':
                     # Handle EXECUTE ALERT similarly
                     pass
+                elif action == 'TRAINING MANUAL':
+                    result = fetch_record(args)
+                    print(result)
+                    return result
                 else:
                     result = f'Unknown action: {action}'
                 results.append(result)
@@ -322,8 +326,19 @@ James
 
 Only this nothing else
 
+HOWEVER THIS IS DIFFERENT FOR TRAINING MANNUAL
 
+TRAINING MANUAL:    Location-Cohost-Training-Manual_Reading
 
+YOU WILL NOT LOOK FOR VARIABLES AND ANSWERS
+FOR TRAINING MANUAL: YOU WILL SEARCH ALL THE TRAINING MANUALS, MAKE A NOTE OF MAXIMUM AROUND 30 WORDS, AND RETURN TO THE VARIABLE TRAINING_DATA
+
+ACTION = TRAINING MANUAL
+
+THAT'S IT!!
+
+WHAT ARE THE STEPS TO DO IN FOR AIR BNB?
+YOU WILL SEARCH, FIND SUMMARIZE AND RESPOND!
 
 """,
         messages=[
