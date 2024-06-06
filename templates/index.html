@@ -2,62 +2,147 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Document Management Chatbot</title>
+    <title>Voice Recognition Chat</title>
     <style>
-        body { font-family: Arial, sans-serif; }
-        #result { margin-top: 20px; }
-        .hidden { display: none; }
+        body {
+            font-family: Arial, sans-serif;
+        }
+        .chat-container {
+            width: 100%;
+            max-width: 600px;
+            margin: 50px auto;
+            border: 1px solid #ccc;
+            padding: 20px;
+            border-radius: 10px;
+        }
+        .messages {
+            border: 1px solid #ccc;
+            padding: 10px;
+            height: 300px;
+            overflow-y: auto;
+            margin-bottom: 10px;
+            border-radius: 5px;
+        }
+        .message {
+            margin: 5px 0;
+        }
+        .message.sent {
+            text-align: right;
+            color: blue;
+        }
+        .message.received {
+            text-align: left;
+            color: green;
+        }
+        .input-container {
+            display: flex;
+        }
+        .input-container input {
+            flex: 1;
+            padding: 10px;
+            border: 1px solid #ccc;
+            border-radius: 5px 0 0 5px;
+        }
+        .input-container button {
+            padding: 10px;
+            border: none;
+            background-color: #28a745;
+            color: white;
+            border-radius: 0 5px 5px 0;
+            cursor: pointer;
+        }
+        .input-container button:hover {
+            background-color: #218838;
+        }
     </style>
 </head>
 <body>
-    <h1>Document Management Chatbot</h1>
-    <form id="commandForm">
-        <label for="command">Enter Command:</label><br>
-        <textarea id="command" name="command" rows="4" cols="50"></textarea><br>
-        <button type="submit">Submit</button>
-    </form>
-    <button id="voiceInputBtn">Start Voice Input</button>
-    <div id="result"></div>
 
-    <script>
-        document.getElementById('commandForm').addEventListener('submit', function(e) {
-            e.preventDefault();
-            sendCommand(document.getElementById('command').value);
-        });
+<div class="chat-container">
+    <div class="messages" id="messages"></div>
+    <div class="input-container">
+        <input type="text" id="messageInput" placeholder="Type your message...">
+        <button onclick="sendMessage()">Send</button>
+        <button onclick="startVoiceRecognition()">Voice Input</button>
+        <button onclick="speakLastMessage()">Read Aloud</button>
+    </div>
+</div>
 
-        document.getElementById('voiceInputBtn').addEventListener('click', function() {
-            startVoiceRecognition();
-        });
-
-        function sendCommand(command) {
-            fetch('/process_command', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ command: command })
-            })
-            .then(response => response.json())
-            .then(data => {
-                document.getElementById('result').innerText = data.result;
-                speak(data.result);
-            })
-            .catch(error => console.error('Error:', error));
-        }
-
-        function startVoiceRecognition() {
-            const recognition = new (window.SpeechRecognition || window.webkitSpeechRecognition)();
+<script>
+    // Function to start voice recognition
+    function startVoiceRecognition() {
+        if ('webkitSpeechRecognition' in window) {
+            var recognition = new webkitSpeechRecognition();
             recognition.lang = 'en-US';
             recognition.start();
+            
             recognition.onresult = function(event) {
-                const transcript = event.results[0][0].transcript;
-                sendCommand(transcript);
+                var transcript = event.results[0][0].transcript;
+                document.getElementById("messageInput").value = transcript;
+                
+                // Automatically submit after 2 seconds
+                setTimeout(function() {
+                    sendMessage();
+                }, 2000);
             };
+            
+            recognition.onerror = function(event) {
+                console.error('Speech recognition error:', event.error);
+            };
+        } else {
+            console.error('Speech recognition not supported by this browser.');
         }
+    }
 
-        function speak(text) {
-            const utterance = new SpeechSynthesisUtterance(text);
-            speechSynthesis.speak(utterance);
-        }
-    </script>
+    // Function to send a message
+function sendMessage() {
+    var userInput = document.getElementById("messageInput").value;
+    var messagesDiv = document.getElementById("messages");
+    messagesDiv.innerHTML += '<div class="message sent">' + userInput + '</div>';
+
+    // Clear the input field after sending
+    document.getElementById("messageInput").value = "";
+
+    // Send user input to Flask backend
+    fetch('/process_command', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+            user_input: userInput
+        })
+    })
+    .then(response => response.json())
+    .then(data => {
+        // Handle the response from the backend
+        var results = data.results;
+        results.forEach(result => {
+            messagesDiv.innerHTML += '<div class="message received">' + result + '</div>';
+        });
+    })
+    .catch(error => {
+        console.error('Error sending message:', error);
+    });
+}
+
+    // Function to read aloud the last message
+    function speakLastMessage() {
+        var messagesDiv = document.getElementById("messages");
+        var lastMessage = messagesDiv.lastElementChild.textContent;
+        speakMessage(lastMessage);
+    }
+
+    // Function to read aloud a message
+    function speakMessage(message) {
+        var speech = new SpeechSynthesisUtterance();
+        speech.text = message;
+        speech.volume = 1;
+        speech.rate = 1;
+        speech.pitch = 1;
+        window.speechSynthesis.speak(speech);
+    }
+</script>
+
 </body>
 </html>
