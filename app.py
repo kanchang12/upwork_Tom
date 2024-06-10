@@ -5,6 +5,8 @@ import openai
 import re
 import sys
 import os
+from pymongo import MongoClient  # Ensure this import is present
+from pymongo.errors import ServerSelectionTimeoutError
 
 
 app = Flask(__name__)
