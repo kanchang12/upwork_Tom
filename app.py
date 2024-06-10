@@ -26,7 +26,7 @@ def read_files_from_database(collection):
     cursor = collection.find({}, {"content": 1, "_id": 0})
     for doc in cursor:
         file_content = doc.get("content", "")
-        aggregated_text += file_content + "\n"  # Add file content to aggregated text
+        aggregated_text += str(file_content) + "\n"  # Add file content to aggregated text
     return aggregated_text.strip()  # Remove trailing newline if exists
 
 def update_aggregate_text():
@@ -289,32 +289,32 @@ def update_record(db, file_name, variable_name, new_value):
         # Search within the content field for the variable name
         matched_variable = None
         content = doc.get("content", "")
-        for line in content.split("\n"):
+        for line in str(content).split("\n"):
             if variable_name.lower() in line.lower():
                 matched_variable = line.split(":")[0].strip()
                 # Extract old value if found
                 old_value = line.split(":")[1].strip()
                 break
 
-    if not matched_variable:
+    if old_value is None:
         return f"Variable {variable_name} not found in file {file_name}"
 
-    # Update the document with the new value and previous value
-    if "Previous value" in doc.get("content", ""):
-        new_content = doc["content"].replace(f"Previous value = \"{old_value}\"", f"Previous value = \"{old_value}\"\n{matched_variable}: {new_value}")
-    else:
-        new_content = doc["content"].replace(f"{matched_variable}: {old_value}", f"{matched_variable}: {new_value}\nPrevious value = \"{old_value}\"")
+    # Update content with new value and previous value
+    if doc["filename"].lower() == file_name.lower():
+        content[f"{variable_name}"] = f"{new_value} + \nPrevious Value : {old_value}"
 
     # Update the document with the new content
     collection.update_one(
-        {"_id": doc["_id"]},
-        {"$set": {"content": new_content}}
+    {"_id": doc["_id"]},
+    {"$set": {"content": content}}
     )
-    
-    # Update the aggregated text after updating the document
+  
+
+
+    # Update the aggregate text after updating the document
     update_aggregate_text()
-    
-    return f"Updated {file_name}: {matched_variable} set to {new_value}, Previous value = \"{old_value}\""
+
+    return f"Updated {file_name}: {variable_name} set to {new_value}, Previous {variable_name} = \"{old_value}\""
 
 
 
