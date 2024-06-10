@@ -313,6 +313,9 @@ def update_record(db, file_name, variable_name, new_value):
     
     # Update the aggregated text after updating the document
     update_aggregate_text()
+    
+    return f"Updated {file_name}: {matched_variable} set to {new_value}, Previous value = \"{old_value}\""
+
 
 
 
