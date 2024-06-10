@@ -7,6 +7,7 @@ import sys
 import os
 from pymongo import MongoClient  # Ensure this import is present
 from pymongo.errors import ServerSelectionTimeoutError
+from flask_cors import CORS
 
 
 app = Flask(__name__)
