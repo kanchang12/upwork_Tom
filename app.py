@@ -21,14 +21,12 @@ db = client.get_database(MONGODB_DB_NAME)
 collection = db.get_collection(MONGODB_COLLECTION_NAME)
 
 def read_files_from_database(collection):
-    try:
-        cursor = collection.find()
-        for doc in cursor:
-            print(doc)  # Or process the document as needed
-        return cursor
-    except ServerSelectionTimeoutError as err:
-        print("Error reading from MongoDB:", err)
-        return []
+    aggregated_text = ""
+    cursor = collection.find({}, {"content": 1, "_id": 0})
+    for doc in cursor:
+        file_content = doc.get("content", "")
+        aggregated_text += file_content + "\n"  # Add file content to aggregated text
+    return aggregated_text.strip()  # Remove trailing newline if exists
 
 def update_aggregate_text():
     aggregated_text = read_files_from_database(collection)
@@ -199,7 +197,7 @@ def find_best_match(partial_name, valid_names):
     return " "
 
 
-@app.route('/process_command', methods=['POST'])
+@app.route('/process_command', methods=['GET', 'POST'])
 def process_command():
     user_input = request.json.get('user_input')
 
