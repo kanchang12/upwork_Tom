@@ -5,7 +5,7 @@ import openai
 import re
 import sys
 import os
-from openai.api_resources import OpenAI
+
 
 
 app = Flask(__name__)
@@ -42,11 +42,12 @@ def index():
     return render_template('index.html')
 
 
+
 openai_api_key = os.getenv("OPENAI_API_KEY")
 if openai_api_key is None:
     raise ValueError("OpenAI API key not found in environmental variables.")
 
-client = OpenAI(api_key=openai_api_key)
+client = openai.API(api_key=openai_api_key)
 
 def get_claude_response(user_input):
 
