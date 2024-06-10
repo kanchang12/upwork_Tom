@@ -5,7 +5,6 @@ import openai
 import re
 import sys
 import os
-from openai import API
 
 
 app = Flask(__name__)
