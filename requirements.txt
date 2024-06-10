@@ -1,5 +1,5 @@
 Flask
-openai==0.28
+openai==0.8.2
 gunicorn
 beautifulsoup4
 requests
