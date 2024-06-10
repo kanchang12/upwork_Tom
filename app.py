@@ -199,23 +199,16 @@ def find_best_match(partial_name, valid_names):
 
 
 @app.route('/process_command', methods=['POST'])
-
 def process_command():
-    if request.method == 'POST':
-        # Check if request content type is JSON
-        if request.headers['Content-Type'] == 'application/json':
-            user_input = request.json.get('user_input')
+    user_input = request.json.get('user_input')
 
-            try:
-                # Call the function to get Claude's response
-                claude_response = get_claude_response(user_input)
-                # Return the response
-                return jsonify({"response": claude_response})
-            except Exception as e:
-                print("Error processing command:", e)
-                return jsonify({"error": str(e)}), 500
-        else:
-            return jsonify({"error": "Unsupported Media Type"}), 415
+    # Get response from OpenAI based on aggregated text
+    claude_response = get_claude_response(user_input)
+
+    # Check if the response is a simple message
+    if "FETCH RECORD" not in claude_response and "UPDATE RECORD" not in claude_response:
+        # Return the response as is
+        return jsonify({"extracted_text": claude_response})
 
 
     # Handle specific actions
