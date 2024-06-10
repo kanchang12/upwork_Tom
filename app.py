@@ -44,7 +44,7 @@ def index():
 
 
 openai_api_key = os.getenv("OPENAI_API_KEY")
-client = API(api_key=openai_api_key)
+client = openai.Client(api_key=openai_api_key)
 
 
 
