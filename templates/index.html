@@ -6,25 +6,27 @@
     <style>
         body {
             font-family: Arial, sans-serif;
+            font-size: 24px;
         }
         .chat-container {
             width: 100%;
-            max-width: 600px;
+            max-width: 1000px;
             margin: 50px auto;
-            border: 1px solid #ccc;
-            padding: 20px;
+            border: 2px solid #ccc; /* Increased border width */
+            padding: 40px; /* Increased padding */
             border-radius: 10px;
         }
         .messages {
-            border: 1px solid #ccc;
-            padding: 10px;
-            height: 300px;
+            border: 2px solid #ccc; /* Increased border width */
+            padding: 20px; /* Increased padding */
+            height: 400px; /* Increased height */
             overflow-y: auto;
-            margin-bottom: 10px;
+            margin-bottom: 20px; /* Increased margin */
             border-radius: 5px;
+            font-size: 24px; /* Double the font size */
         }
         .message {
-            margin: 5px 0;
+            margin: 10px 0; /* Increased margin */
         }
         .message.sent {
             text-align: right;
@@ -34,22 +36,23 @@
             text-align: left;
             color: green;
         }
-        .input-container {
-            display: flex;
-        }
         .input-container input {
-            flex: 1;
-            padding: 10px;
-            border: 1px solid #ccc;
-            border-radius: 5px 0 0 5px;
+            width: 100%;
+            flex: 10;
+            padding: 20px; /* Increased padding */
+            border: 2px solid #ccc; /* Increased border width */
+            border-radius: 10px 0 0 10px;
+            font-size: 24px; /* Double the font size */
         }
         .input-container button {
-            padding: 10px;
+            padding: 20px; /* Increased padding */
             border: none;
             background-color: #28a745;
             color: white;
-            border-radius: 0 5px 5px 0;
+            border-radius: 0 10px 10px 0;
             cursor: pointer;
+            font-size: 24px; /* Double the font size */
+            margin-left: 10px; /* Added margin between buttons */
         }
         .input-container button:hover {
             background-color: #218838;
@@ -59,14 +62,87 @@
 <body>
 
 <div class="chat-container">
+
+        {% if token_message %}
+        <div class="token-message">
+            {{ token_message | safe }}
+        </div>
+    {% endif %}
+
+
     <div class="messages" id="messages"></div>
     <div class="input-container">
-        <input type="text" id="messageInput" placeholder="Type your message...">
+        <input type="text" id="messageInput" placeholder="Type your message..."><br>
         <button onclick="sendMessage()">Send</button>
         <button onclick="startVoiceRecognition()">Voice Input</button>
-        <button onclick="speakLastMessage()">Read Aloud</button>
+        <button onclick="speakLastMessage()">Read Aloud</button><br>
+
     </div>
 </div>
+
+
+<script>
+
+    // Function to handle Enter key press
+    function handleKeyPress(event) {
+        if (event.key === 'Enter') {
+            sendMessage();
+        }
+    }
+        function aggregateData() {
+            fetch('/aggregate_data')
+                .then(response => response.json())
+                .then(data => {
+                    alert(data.message);
+                })
+                .catch(error => {
+                    alert("Error during aggregation: " + error);
+                });
+        }
+    </script>
+
+    <script>
+        function aggregateData() {
+            fetch('/aggregate_data')
+                .then(response => {
+                    if (response.ok) {
+                        return response.text();
+                    } else if (response.status === 401) {
+                        throw new Error('Token expired');
+                    } else {
+                        throw new Error('Aggregation failed');
+                    }
+                })
+                .then(data => {
+                    alert(data);
+                })
+                .catch(error => {
+                    if (error.message === 'Token expired') {
+                        alert('Token expired. Please regenerate the token.');
+                        showTokenRegenerationButton();
+                    } else {
+                        alert("Error during aggregation: " + error);
+                    }
+                });
+        }
+
+        function showTokenRegenerationButton() {
+            document.getElementById('tokenRegeneration').style.display = 'block';
+        }
+
+        function regenerateToken() {
+            fetch('/regenerate_token_background', { method: 'POST' })
+                .then(response => response.json())
+                .then(data => {
+                    alert(data.message);
+                    document.getElementById('tokenRegeneration').style.display = 'none';
+                })
+                .catch(error => {
+                    alert("Error regenerating token: " + error);
+                });
+        }
+    </script>
+
 
 <script>
     // Function to start voice recognition
@@ -94,37 +170,32 @@
         }
     }
 
-    // Function to send a message
-function sendMessage() {
-    var userInput = document.getElementById("messageInput").value;
-    var messagesDiv = document.getElementById("messages");
-    messagesDiv.innerHTML += '<div class="message sent">' + userInput + '</div>';
+            // Function to send a message
+            function sendMessage() {
+                var userInput = document.getElementById("messageInput").value;
+                var messagesDiv = document.getElementById("messages");
+                messagesDiv.innerHTML += '<div class="message sent">' + userInput + '</div>';
 
-    // Clear the input field after sending
-    document.getElementById("messageInput").value = "";
+                document.getElementById("messageInput").value = "";
 
-    // Send user input to Flask backend
-    fetch('/process_command', {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-            user_input: userInput
-        })
-    })
-    .then(response => response.json())
-    .then(data => {
-        // Handle the response from the backend
-        var results = data.results;
-        results.forEach(result => {
-            messagesDiv.innerHTML += '<div class="message received">' + result + '</div>';
-        });
-    })
-    .catch(error => {
-        console.error('Error sending message:', error);
-    });
-}
+                fetch('/process_command', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        user_input: userInput
+                    })
+                })
+                .then(response => response.json())
+                .then(data => {
+                    var responseText = data.extracted_text;
+                    messagesDiv.innerHTML += '<div class="message received">' + responseText + '</div>';
+                })
+                .catch(error => {
+                    console.error('Error sending message:', error);
+                });
+            }
 
     // Function to read aloud the last message
     function speakLastMessage() {
