@@ -42,7 +42,7 @@ def index():
 
 
 api_key = os.getenv('OPENAI_API_KEY')
-client = openai.OpenAI(api_key=api_key)
+client = openai.OpenAI(api_key)
 
 def get_claude_response(user_input):
 
