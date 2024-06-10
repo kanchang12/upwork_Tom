@@ -10,7 +10,7 @@ from pymongo.errors import ServerSelectionTimeoutError
 
 
 app = Flask(__name__)
-
+CORS(app) 
 MONGODB_URI = "mongodb+srv://kanchang12:Ob3uROyf8rtbEOwx@cluster0.sle630c.mongodb.net/upwrok?retryWrites=true&w=majority&ssl=true"
 MONGODB_DB_NAME = "upwrok"
 MONGODB_COLLECTION_NAME = "files"
