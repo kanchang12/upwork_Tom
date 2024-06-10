@@ -9,24 +9,27 @@ import os
 
 app = Flask(__name__)
 
-MONGODB_URI = "mongodb+srv://kanchang12:PQIdD2qUEKZOsbue@cluster0.sle630c.mongodb.net/upwrok?retryWrites=true&w=majority"
+MONGODB_URI = "mongodb+srv://kanchang12:Ob3uROyf8rtbEOwx@cluster0.sle630c.mongodb.net/upwrok?retryWrites=true&w=majority&&ssl=true"
 MONGODB_DB_NAME = "upwrok"
 MONGODB_COLLECTION_NAME = "files"
 
-client1 = pymongo.MongoClient(MONGODB_URI)
-db = client1[MONGODB_DB_NAME]
-collection = db[MONGODB_COLLECTION_NAME]
+client = MongoClient(mongodb_uri, ssl=True, ssl_cert_reqs='CERT_NONE')  # Use 'CERT_REQUIRED' for stricter verification
+    db = client.get_database('upwrok')
+    collection = db.get_collection('files')
 
 
 def read_files_from_database(collection):
-    aggregated_text = ""
-    cursor = collection.find({}, {"content": 1, "_id": 0})
-    for doc in cursor:
-        file_content = doc.get("content", "")
-        aggregated_text += file_content + "\n"  # Add file content to aggregated text
-    return aggregated_text.strip()  # Remove trailing newline if exists
+    try:
+        cursor = collection.find()
+        for doc in cursor:
+            print(doc)  # Or process the document as needed
+        return cursor
+    except ServerSelectionTimeoutError as err:
+        print("Error reading from MongoDB:", err)
+        return []
 
 def update_aggregate_text():
+    
     aggregated_text = read_files_from_database(collection)
     return aggregated_text
 
@@ -198,6 +201,14 @@ def find_best_match(partial_name, valid_names):
 @app.route('/process_command', methods=['POST'])
 def process_command():
     user_input = request.json.get('user_input')
+
+    try:
+       aggregated_text = update_aggregate_text()
+       claude_response = get_claude_response(user_input)
+       return jsonify({"response": claude_response})
+    except Exception as e:
+        print("Error processing command:", e)
+        return jsonify({"error": str(e)}), 500
 
     # Get response from OpenAI based on aggregated text
     claude_response = get_claude_response(user_input)
