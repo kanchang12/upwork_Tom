@@ -5,6 +5,7 @@ import openai
 import re
 import sys
 import os
+from openai.api_resources import OpenAI
 
 
 app = Flask(__name__)
@@ -40,10 +41,12 @@ def update_aggregate_text():
 def index():
     return render_template('index.html')
 
-from openai import OpenAI
-from config import OPENAI_API_KEY
 
-client = OpenAI(api_key=OPENAI_API_KEY)
+openai_api_key = os.getenv("OPENAI_API_KEY")
+if openai_api_key is None:
+    raise ValueError("OpenAI API key not found in environmental variables.")
+
+client = OpenAI(api_key=openai_api_key)
 
 def get_claude_response(user_input):
 
