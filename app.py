@@ -198,7 +198,7 @@ def find_best_match(partial_name, valid_names):
     return " "
 
 
-@app.route('/process_command', methods=['GET', 'POST'])
+@app.route('/process_command', methods=['POST'])
 
 def process_command():
     if request.method == 'POST':
@@ -217,8 +217,6 @@ def process_command():
         else:
             return jsonify({"error": "Unsupported Media Type"}), 415
 
-    elif request.method == 'GET':
-        return jsonify({"error": "Method not allowed"}), 405
 
     # Handle specific actions
     results = []
