@@ -1,7 +1,7 @@
 import requests
 from flask import Flask, request, jsonify, render_template
 import pymongo
-from openai import OpenAI
+import openai
 import re
 import sys
 import os
