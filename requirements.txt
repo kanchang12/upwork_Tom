@@ -6,4 +6,5 @@ requests
 anthropic
 pymongo==3.12.0
 python-docx
+pymongo[srv]==4.0.1
 
