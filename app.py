@@ -294,6 +294,7 @@ def update_record(db, file_name, variable_name, new_value):
                 matched_variable = line.split(":")[0].strip()
                 # Extract old value if found
                 old_value = line.split(":")[1].strip()
+                print(old_value)
                 break
 
     if old_value is None:
