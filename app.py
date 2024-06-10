@@ -16,7 +16,7 @@ MONGODB_DB_NAME = "upwrok"
 MONGODB_COLLECTION_NAME = "files"
 
 # Initialize MongoDB client with SSL parameters
-client = MongoClient(MONGODB_URI, ssl_cert_reqs='CERT_NONE')  # Use 'CERT_REQUIRED' for stricter verification
+client = MongoClient(MONGODB_URI)  # Use 'CERT_REQUIRED' for stricter verification
 db = client.get_database(MONGODB_DB_NAME)
 collection = db.get_collection(MONGODB_COLLECTION_NAME)
 
