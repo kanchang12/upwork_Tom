@@ -13,10 +13,10 @@ MONGODB_URI = "mongodb+srv://kanchang12:Ob3uROyf8rtbEOwx@cluster0.sle630c.mongod
 MONGODB_DB_NAME = "upwrok"
 MONGODB_COLLECTION_NAME = "files"
 
-client = MongoClient(mongodb_uri, ssl=True, ssl_cert_reqs='CERT_NONE')  # Use 'CERT_REQUIRED' for stricter verification
-    db = client.get_database('upwrok')
-    collection = db.get_collection('files')
-
+# Initialize MongoDB client with SSL parameters
+client = MongoClient(MONGODB_URI, ssl=True, ssl_cert_reqs='CERT_NONE')  # Use 'CERT_REQUIRED' for stricter verification
+db = client.get_database(MONGODB_DB_NAME)
+collection = db.get_collection(MONGODB_COLLECTION_NAME)
 
 def read_files_from_database(collection):
     try:
@@ -27,9 +27,7 @@ def read_files_from_database(collection):
     except ServerSelectionTimeoutError as err:
         print("Error reading from MongoDB:", err)
         return []
-
 def update_aggregate_text():
-    
     aggregated_text = read_files_from_database(collection)
     return aggregated_text
 
