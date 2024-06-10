@@ -16,8 +16,8 @@ MONGODB_DB_NAME = "upwrok"
 MONGODB_COLLECTION_NAME = "files"
 
 # Initialize MongoDB client with SSL parameters
-client = MongoClient(MONGODB_URI)  # Use 'CERT_REQUIRED' for stricter verification
-db = client.get_database(MONGODB_DB_NAME)
+client1 = MongoClient(MONGODB_URI)  # Use 'CERT_REQUIRED' for stricter verification
+db = client1.get_database(MONGODB_DB_NAME)
 collection = db.get_collection(MONGODB_COLLECTION_NAME)
 
 def read_files_from_database(collection):
@@ -202,15 +202,11 @@ def process_command():
     user_input = request.json.get('user_input')
 
     try:
-       aggregated_text = update_aggregate_text()
        claude_response = get_claude_response(user_input)
        return jsonify({"response": claude_response})
     except Exception as e:
         print("Error processing command:", e)
         return jsonify({"error": str(e)}), 500
-
-    # Get response from OpenAI based on aggregated text
-    claude_response = get_claude_response(user_input)
 
     # Check if the response is a simple message
     if "FETCH RECORD" not in claude_response and "UPDATE RECORD" not in claude_response:
