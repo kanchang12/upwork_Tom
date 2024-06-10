@@ -158,6 +158,8 @@ We have multiple properties in New Jersey. Would you like the names of all prope
     Internet bill
     Mortgage
 
+    If the user asks distance, check the address, and check your database and find the distance
+
     If the user can't say the right variable name, it is your duty to understand what he is saying and find the correct value
     So Phone number is same as cell number, cell no, cll phone number and what not
     However, please give coherent reply
@@ -308,10 +310,9 @@ def update_record(db, file_name, variable_name, new_value):
         {"_id": doc["_id"]},
         {"$set": {"content": new_content}}
     )
-
+    
+    # Update the aggregated text after updating the document
     update_aggregate_text()
-
-    return f"Updated {file_name}: {matched_variable} set to {new_value}, Previous value = \"{old_value}\""
 
 
 
