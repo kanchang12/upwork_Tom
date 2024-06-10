@@ -4,5 +4,6 @@ gunicorn
 beautifulsoup4
 requests
 anthropic
+pymongo==3.12.0
 python-docx
 
