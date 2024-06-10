@@ -199,17 +199,17 @@ def find_best_match(partial_name, valid_names):
 
 @app.route('/process_command', methods=['GET', 'POST'])
 def process_command():
-    if request.method == 'POST':
-        user_input = request.json.get('user_input')
+    
+    user_input = request.json.get('user_input')
 
-        try:
-            # Call the function to get Claude's response
-            claude_response = get_claude_response(user_input)
-            # Return the response
-            return jsonify({"response": claude_response})
-        except Exception as e:
-            print("Error processing command:", e)
-            return jsonify({"error": str(e)}), 500
+    try:
+        # Call the function to get Claude's response
+        claude_response = get_claude_response(user_input)
+        # Return the response
+        return jsonify({"response": claude_response})
+    except Exception as e:
+        print("Error processing command:", e)
+        return jsonify({"error": str(e)}), 500
 
     return jsonify({"error": "Method not allowed"}), 405
 
