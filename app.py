@@ -40,9 +40,10 @@ def update_aggregate_text():
 def index():
     return render_template('index.html')
 
+from openai import OpenAI
+from config import OPENAI_API_KEY
 
-api_key = os.getenv('OPENAI_API_KEY')
-client = openai.OpenAI(api_key)
+client = OpenAI(api_key=OPENAI_API_KEY)
 
 def get_claude_response(user_input):
 
