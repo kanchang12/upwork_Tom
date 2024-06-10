@@ -164,6 +164,7 @@ We have multiple properties in New Jersey. Would you like the names of all prope
     When I am asking for employee name but did not mention the property
     You asked the property name in next line and I provided the same
     That means employee name for that property. DO NOT Ask to confirm the employee name as user has already said that like this
+    If the user asks for total number, calculate and tell the number
 
     Also the property name you will check with all properties
     So if the users asks Sicklerville but mispronounced it, you will do two things
@@ -307,6 +308,8 @@ def update_record(db, file_name, variable_name, new_value):
         {"_id": doc["_id"]},
         {"$set": {"content": new_content}}
     )
+
+    update_aggregate_text()
 
     return f"Updated {file_name}: {matched_variable} set to {new_value}, Previous value = \"{old_value}\""
 
