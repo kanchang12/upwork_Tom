@@ -291,7 +291,7 @@ def update_record(db, file_name, variable_name, new_value):
         if variable_name.lower() in line.lower():
             matched_variable = line.split(":")[0].strip()
             old_value = line.split(":")[1].strip()
-            new_line = f"{matched_variable}: {new_value}"
+            new_line = f"{matched_variable}: {new_value}\nPrevious Value: {old_value}"
             updated_lines.append(new_line)
         else:
             updated_lines.append(line)
