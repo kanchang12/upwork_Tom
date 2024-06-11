@@ -302,7 +302,7 @@ def update_record(db, file_name, variable_name, new_value):
 
     # Update content with new value and previous value
     if doc["filename"].lower() == file_name.lower():
-        content[f"{variable_name}"] =''.join(new_value)
+        content[f"{variable_name}"] =''.join(str(new_value))
 
     # Update the document with the new content
     collection.update_one(
