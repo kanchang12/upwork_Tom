@@ -3,21 +3,18 @@ from flask import Flask, request, jsonify, render_template
 import pymongo
 import openai
 import re
-import sys
 import os
-from pymongo import MongoClient  # Ensure this import is present
-from pymongo.errors import ServerSelectionTimeoutError
+from pymongo import MongoClient
 from flask_cors import CORS
 
-
 app = Flask(__name__)
-CORS(app) 
+CORS(app)
 MONGODB_URI = "mongodb+srv://kanchang12:Ob3uROyf8rtbEOwx@cluster0.sle630c.mongodb.net/upwrok?retryWrites=true&w=majority&ssl=true"
 MONGODB_DB_NAME = "upwrok"
 MONGODB_COLLECTION_NAME = "files"
 
 # Initialize MongoDB client with SSL parameters
-client1 = MongoClient(MONGODB_URI)  # Use 'CERT_REQUIRED' for stricter verification
+client1 = MongoClient(MONGODB_URI)
 db = client1.get_database(MONGODB_DB_NAME)
 collection = db.get_collection(MONGODB_COLLECTION_NAME)
 
@@ -26,8 +23,8 @@ def read_files_from_database(collection):
     cursor = collection.find({}, {"content": 1, "_id": 0})
     for doc in cursor:
         file_content = doc.get("content", "")
-        aggregated_text += str(file_content) + "\n"  # Add file content to aggregated text
-    return aggregated_text.strip()  # Remove trailing newline if exists
+        aggregated_text += str(file_content) + "\n"
+    return aggregated_text.strip()
 
 def update_aggregate_text():
     aggregated_text = read_files_from_database(collection)
@@ -37,18 +34,10 @@ def update_aggregate_text():
 def index():
     return render_template('index.html')
 
-# Ensure the API key is correctly fetched
 openai_api_key = os.getenv("OPENAI_API_KEY")
-if not openai_api_key:
-    raise ValueError("OPENAI_API_KEY environment variable not set.")
-
-client = openai.Client(api_key=openai_api_key)
-
-# Initialize OpenAI client
 openai.api_key = openai_api_key
 
-# Initial conversation history
-conversation_history = ""
+conversation_history = "Your initial system instructions here..."
 
 def get_response(user_input, conversation_history):
     try:
@@ -76,13 +65,12 @@ def get_response(user_input, conversation_history):
         print(f"Error in get_response: {e}")
         return "An error occurred while processing your request.", conversation_history
 
-
 def get_claude_response(user_input):
     global conversation_history
     aggregated_text = update_aggregate_text()
 
     system_instructions = f"""
-    Purpose:
+Purpose:
     Your primary goal is to provide accurate, concise responses to assist the business owner. You will use the data in the variable {aggregated_text} and, if needed, refer to your public training data.
 
     General Rules:
@@ -223,17 +211,23 @@ def get_claude_response(user_input):
     # Update conversation history with new instructions
     conversation_history = f"{conversation_history}\n{system_instructions}"
 
-    generated_text, conversation_history = get_response(user_input, conversation_history)
+    # Truncate conversation history to fit within the model's token limit
+    max_token_limit = 16385 - 2560  # Model's max tokens - response max tokens
+    truncated_history = truncate_conversation_history(conversation_history, max_token_limit)
+
+    generated_text, conversation_history = get_response(user_input, truncated_history)
     
     return generated_text, conversation_history
 
-def find_best_match(partial_name, valid_names):
-    for name in valid_names:
-        if partial_name in name:
-            return name
-    return " "
+def truncate_conversation_history(history, max_tokens):
+    """Truncate conversation history to fit within the token limit."""
+    tokens = history.split()
+    if len(tokens) > max_tokens:
+        truncated_tokens = tokens[-max_tokens:]
+        return ' '.join(truncated_tokens)
+    return history
 
-@app.route('/process_command', methods=['GET', 'POST'])
+@app.route('/process_command', methods=['POST'])
 def process_command():
     user_input = request.json.get('user_input')
 
@@ -251,8 +245,6 @@ def process_command():
     pattern = re.compile(r'\*(.*?)\*|(\S+)')
     words = [match.group(1) or match.group(2) for match in pattern.finditer(claude_response)]
 
-    print(f"Words extracted: {words}")
-
     i = 0
     while i < len(words):
         action = words[i].strip()
@@ -264,7 +256,7 @@ def process_command():
                 results.append(result)
             elif action == 'UPDATE' and args == 'RECORD':
                 if i + 2 < len(words):
-                    file_name = words[i + 1]
+                    file_name = words[i+1]
                     variable_name = words[i + 2]
                     new_value = ' '.join(words[i + 3:])
                     result = update_record(db, file_name, variable_name, new_value)
@@ -274,12 +266,6 @@ def process_command():
                     result = 'Invalid arguments for UPDATE RECORD'
                     results.append(result)
                     i += 3
-            elif action == 'ADD' and args == 'RECORD':
-                pass  # Handle ADD RECORD similarly
-            elif action == 'ADD' and args == 'ALERT':
-                pass  # Handle ADD ALERT similarly
-            elif action == 'EXECUTE' and args == 'ALERT':
-                pass  # Handle EXECUTE ALERT similarly
             else:
                 pass
         i += 1
@@ -311,7 +297,11 @@ def update_record(db, file_name, variable_name, new_value):
         return f"Variable {variable_name} not found in file {file_name}"
 
     new_content = "\n".join(updated_lines)
-    collection.update_one({"_id": doc["_id"]}, {"$set": {"content": new_content}})
+    collection.update_one(
+        {"_id": doc["_id"]},
+        {"$set": {"content": new_content}}
+    )
+  
     update_aggregate_text()
 
     return f"Updated {file_name}: {variable_name} set to {new_value}, Previous {variable_name} = \"{old_value}\""
