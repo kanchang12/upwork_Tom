@@ -51,37 +51,31 @@ openai.api_key = openai_api_key
 conversation_history = ""
 
 def get_response(user_input, conversation_history):
-    messages = [
-        {"role": "system", "content": conversation_history},
-        {"role": "user", "content": user_input}
-    ]
-
     try:
-def get_response(user_input, conversation_history):
-    messages = [
-        {"role": "system", "content": conversation_history},
-        {"role": "user", "content": user_input}
-    ]
+        messages = [
+            {"role": "system", "content": conversation_history},
+            {"role": "user", "content": user_input}
+        ]
 
-    response = openai.ChatCompletion.create(
-        model="gpt-3.5-turbo-16k",
-        messages=messages,
-        temperature=1,
-        max_tokens=2560,
-        top_p=1,
-        frequency_penalty=0.9
-    )
+        response = openai.ChatCompletion.create(
+            model="gpt-3.5-turbo-16k",
+            messages=messages,
+            temperature=1,
+            max_tokens=2560,
+            top_p=1,
+            frequency_penalty=0.9
+        )
 
-    generated_text = response.choices[0].message['content']
-        print("Generated text:", generated_text)
-
+        generated_text = response.choices[0].message['content']
+        
         # Update conversation history
         conversation_history += f"\nUser: {user_input}\nAssistant: {generated_text}"
+        
         return generated_text, conversation_history
-
     except Exception as e:
         print(f"Error in get_response: {e}")
-        return "Error generating response", conversation_history
+        return "An error occurred while processing your request.", conversation_history
+
 
 def get_claude_response(user_input):
     global conversation_history
