@@ -189,9 +189,13 @@ def get_response(user_input, conversation_history):
             # Format the search results
             search_response = "\n".join(search_results)
 
+        # Truncate conversation history to stay within token limit
+        max_tokens = 16385 - 2560  # maximum allowed tokens minus response tokens
+        truncated_history = truncate_conversation_history(conversation_history, max_tokens)
+
         # Generate response using OpenAI GPT
         messages = [
-            {"role": "system", "content": conversation_history.format(aggregated_text=aggregated_text)},
+            {"role": "system", "content": truncated_history.format(aggregated_text=aggregated_text)},
             {"role": "user", "content": user_input},
             {"role": "system", "content": f"Search results: {search_response}"}
         ]
@@ -213,6 +217,12 @@ def get_response(user_input, conversation_history):
         return generated_text, conversation_history
     except Exception as e:
         return f"Error in get_response: {str(e)}", conversation_history
+
+def truncate_conversation_history(conversation_history, max_tokens):
+    tokens = conversation_history.split()
+    if len(tokens) > max_tokens:
+        tokens = tokens[-max_tokens:]
+    return ' '.join(tokens)
 
 @app.route('/process_command', methods=['GET', 'POST'])
 def process_command():
@@ -239,56 +249,6 @@ def process_command():
 
     response_text, conversation_history = get_response(user_input, conversation_history)
     return jsonify({"response": response_text})
-
-def read_files_from_database(collection):
-    aggregated_text = ""
-    cursor = collection.find({}, {"content": 1, "_id": 0})
-    for doc in cursor:
-        file_content = doc.get("content", "")
-        aggregated_text += str(file_content) + "\n"  # Add file content to aggregated text
-    return aggregated_text.strip()  # Remove trailing newline if exists
-
-def update_record(db, file_name, variable_name, new_value):
-    collection = db[MONGODB_COLLECTION_NAME]
-    # Find the document with the given file name
-    doc = collection.find_one({"filename": file_name})
-    if not doc:
-        return f"File {file_name} not found in the database"
-
-    # Get the content field
-    content = doc.get("content", "")
-
-    # Search within the content field for the variable name
-    lines = str(content).split("\n")
-    updated_lines = []
-    matched_variable = None
-    for line in lines:
-        if variable_name.lower() in line.lower():
-            matched_variable = line.split(":")[0].strip()
-            old_value = line.split(":")[1].strip()
-            new_line = f"{matched_variable}: {new_value}\nPrevious Value: {old_value}"
-            updated_lines.append(new_line)
-        else:
-            updated_lines.append(line)
-
-    if matched_variable is None:
-        return f"Variable {variable_name} not found in file {file_name}"
-
-    # Update the document with the new content
-    new_content = "\n".join(updated_lines)
-    collection.update_one(
-        {"_id": doc["_id"]},
-        {"$set": {"content": new_content}}
-    )
-
-    # Update the aggregate text after updating the document
-    update_aggregate_text()
-
-    return f"Updated {file_name}: {variable_name} set to {new_value}, Previous {variable_name} = \"{old_value}\""
-
-def update_aggregate_text():
-    aggregated_text = read_files_from_database(collection)
-    return aggregated_text
 
 if __name__ == '__main__':
     app.run(debug=True)
