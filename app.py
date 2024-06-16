@@ -214,7 +214,7 @@ def get_response(user_input, conversation_history):
     except Exception as e:
         return f"Error in get_response: {str(e)}", conversation_history
 
-@app.route('/process_command', methods=['POST'])
+@app.route('/process_command', methods=['GET', 'POST'])
 def process_command():
     global conversation_history
     if request.content_type == 'application/json':
