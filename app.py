@@ -224,7 +224,7 @@ def find_best_match(partial_name, valid_names):
 def index():
     return render_template('index.html')
 
-@app.route('/process_command', methods=['POST'])
+@app.route('/process_command', methods=['GET', 'POST'])
 def process_command():
     user_input = request.json.get('user_input')
 
