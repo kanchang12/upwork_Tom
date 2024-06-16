@@ -30,6 +30,14 @@ def update_aggregate_text():
     aggregated_text = read_files_from_database(collection)
     return aggregated_text
 
+def search_database(query):
+    """Search the MongoDB database for the query and return relevant results."""
+    search_results = []
+    cursor = collection.find({"content": {"$regex": re.escape(query), "$options": "i"}})
+    for doc in cursor:
+        search_results.append(doc.get("content", ""))
+    return search_result
+
 @app.route('/')
 def index():
     return render_template('index.html')
@@ -41,16 +49,24 @@ conversation_history = "Your initial system instructions here..."
 
 def get_response(user_input, conversation_history):
     try:
+        # Search the database for the user query
+        search_results = search_database(user_input)
+        
+        # Format the search results
+        search_response = "\n".join(search_results)
+        
+        # Generate response using OpenAI GPT
         messages = [
             {"role": "system", "content": conversation_history},
-            {"role": "user", "content": user_input}
+            {"role": "user", "content": user_input},
+            {"role": "system", "content": f"Search results: {search_response}"}
         ]
 
         response = openai.ChatCompletion.create(
             model="gpt-3.5-turbo-16k",
             messages=messages,
             temperature=1,
-            max_tokens=3560,
+            max_tokens=2560,
             top_p=1,
             frequency_penalty=0.9
         )
@@ -62,8 +78,7 @@ def get_response(user_input, conversation_history):
         
         return generated_text, conversation_history
     except Exception as e:
-        print(f"Error in get_response: {e}")
-        return "An error occurred while processing your request.", conversation_history
+        return f"Error in get_response: {str(e)}", conversation_history
 
 def get_claude_response(user_input):
     global conversation_history
@@ -230,50 +245,13 @@ def truncate_conversation_history(history, max_tokens):
 
 @app.route('/process_command', methods=['POST'])
 def process_command():
-    user_input = request.json.get('user_input')
+    global conversation_history
+    user_input = request.json.get("user_input")
+    if not user_input:
+        return jsonify({"response": "No user input provided."}), 400
 
-    # Get response from OpenAI based on aggregated text
-    claude_response, conversation_history = get_claude_response(user_input)
-
-    # Check if the response is a simple message
-    if "FETCH RECORD" not in claude_response and "UPDATE RECORD" not in claude_response:
-        return jsonify({"extracted_text": claude_response})
-
-    # Handle specific actions
-    results = []
-    words = []
-
-    pattern = re.compile(r'\*(.*?)\*|(\S+)')
-    words = [match.group(1) or match.group(2) for match in pattern.finditer(claude_response)]
-
-    i = 0
-    while i < len(words):
-        action = words[i].strip()
-        i += 1
-        if i < len(words):
-            args = words[i].strip()
-            if action == 'FETCH' and (args == 'RECORD' or not args):
-                result = claude_response
-                results.append(result)
-            elif action == 'UPDATE' and args == 'RECORD':
-                if i + 2 < len(words):
-                    file_name = words[i+1]
-                    variable_name = words[i + 2]
-                    new_value = ' '.join(words[i + 3:])
-                    result = update_record(db, file_name, variable_name, new_value)
-                    results.append(result)
-                    i += 3 + len(new_value.split())
-                else:
-                    result = 'Invalid arguments for UPDATE RECORD'
-                    results.append(result)
-                    i += 3
-            else:
-                pass
-        i += 1
-
-    response_text = '\n'.join(results)
-    response_json = {"extracted_text": response_text}
-    return jsonify(response_json)
+    response_text, conversation_history = get_response(user_input, conversation_history)
+    return jsonify({"response": response_text})
 
 def update_record(db, file_name, variable_name, new_value):
     collection = db[MONGODB_COLLECTION_NAME]
