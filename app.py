@@ -5,29 +5,81 @@ import openai
 import re
 import sys
 import os
-from pymongo import MongoClient
+from pymongo import MongoClient  # Ensure this import is present
 from pymongo.errors import ServerSelectionTimeoutError
 from flask_cors import CORS
 
-app = Flask(__name__)
-CORS(app)
 
-# Initialize MongoDB client
+app = Flask(__name__)
+CORS(app) 
 MONGODB_URI = "mongodb+srv://kanchang12:Ob3uROyf8rtbEOwx@cluster0.sle630c.mongodb.net/upwrok?retryWrites=true&w=majority&ssl=true"
 MONGODB_DB_NAME = "upwrok"
 MONGODB_COLLECTION_NAME = "files"
 
-client1 = MongoClient(MONGODB_URI)
+# Initialize MongoDB client with SSL parameters
+client1 = MongoClient(MONGODB_URI)  # Use 'CERT_REQUIRED' for stricter verification
 db = client1.get_database(MONGODB_DB_NAME)
 collection = db.get_collection(MONGODB_COLLECTION_NAME)
 
-# Initialize OpenAI client
-openai_api_key = os.getenv("OPENAI_API_KEY")
-client = openai.Client(api_key=openai_api_key)
+def read_files_from_database(collection):
+    aggregated_text = ""
+    cursor = collection.find({}, {"content": 1, "_id": 0})
+    for doc in cursor:
+        file_content = doc.get("content", "")
+        aggregated_text += str(file_content) + "\n"  # Add file content to aggregated text
+    return aggregated_text.strip()  # Remove trailing newline if exists
 
-# System instructions for the AI model
-system_instructions = """
-    
+def update_aggregate_text():
+    aggregated_text = read_files_from_database(collection)
+    return aggregated_text
+
+@app.route('/')
+def index():
+    return render_template('index.html')
+
+# Ensure the API key is correctly fetched
+openai_api_key = os.getenv("OPENAI_API_KEY")
+if not openai_api_key:
+    raise ValueError("OPENAI_API_KEY environment variable not set.")
+
+# Initialize OpenAI client
+openai.api_key = openai_api_key
+
+# Initial conversation history
+conversation_history = ""
+
+def get_response(user_input, conversation_history):
+    messages = [
+        {"role": "system", "content": conversation_history},
+        {"role": "user", "content": user_input}
+    ]
+
+    try:
+        response = openai.ChatCompletion.create(
+            model="gpt-3.5-turbo-16k",
+            messages=messages,
+            temperature=1,
+            max_tokens=2560,
+            top_p=1,
+            frequency_penalty=0.9
+        )
+
+        generated_text = response.choices[0].message['content']
+        print("Generated text:", generated_text)
+
+        # Update conversation history
+        conversation_history += f"\nUser: {user_input}\nAssistant: {generated_text}"
+        return generated_text, conversation_history
+
+    except Exception as e:
+        print(f"Error in get_response: {e}")
+        return "Error generating response", conversation_history
+
+def get_claude_response(user_input):
+    global conversation_history
+    aggregated_text = update_aggregate_text()
+
+    system_instructions = f"""
     Purpose:
     Your primary goal is to provide accurate, concise responses to assist the business owner. You will use the data in the variable {aggregated_text} and, if needed, refer to your public training data.
 
@@ -166,49 +218,8 @@ system_instructions = """
     Chatbot: "The Brick property is X miles from the nearest airport."
     """
 
-# Initialize conversation history
-conversation_history = system_instructions
-
-def read_files_from_database(collection):
-    aggregated_text = ""
-    cursor = collection.find({}, {"content": 1, "_id": 0})
-    for doc in cursor:
-        file_content = doc.get("content", "")
-        aggregated_text += str(file_content) + "\n"
-    return aggregated_text.strip()
-
-def update_aggregate_text():
-    aggregated_text = read_files_from_database(collection)
-    return aggregated_text
-
-def get_response(user_input, conversation_history):
-    messages = [
-        {"role": "system", "content": conversation_history},
-        {"role": "user", "content": user_input}
-    ]
-
-    response = client.chat.completions.create(
-        model="gpt-3.5-turbo-16k",
-        messages=messages,
-        temperature=1,
-        max_tokens=2560,
-        top_p=1,
-        frequency_penalty=0.9
-    )
-
-    generated_text = response.choices[0].message.content
-    conversation_history += f"\nUser: {user_input}\nAssistant: {generated_text}"
-    
-    return generated_text, conversation_history
-
-def get_claude_response(user_input):
-    global conversation_history
-    aggregated_text = update_aggregate_text()
-
-    system_instructions_with_data = system_instructions.format(aggregated_text=aggregated_text)
-
     # Update conversation history with new instructions
-    conversation_history = f"{conversation_history}\n{system_instructions_with_data}"
+    conversation_history = f"{conversation_history}\n{system_instructions}"
 
     generated_text, conversation_history = get_response(user_input, conversation_history)
     
@@ -220,10 +231,6 @@ def find_best_match(partial_name, valid_names):
             return name
     return " "
 
-@app.route('/')
-def index():
-    return render_template('index.html')
-
 @app.route('/process_command', methods=['GET', 'POST'])
 def process_command():
     user_input = request.json.get('user_input')
@@ -231,6 +238,7 @@ def process_command():
     # Get response from OpenAI based on aggregated text
     claude_response, conversation_history = get_claude_response(user_input)
 
+    # Check if the response is a simple message
     if "FETCH RECORD" not in claude_response and "UPDATE RECORD" not in claude_response:
         return jsonify({"extracted_text": claude_response})
 
@@ -308,4 +316,3 @@ def update_record(db, file_name, variable_name, new_value):
 
 if __name__ == '__main__':
     app.run(debug=True)
-
