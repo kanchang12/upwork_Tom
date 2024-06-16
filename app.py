@@ -57,16 +57,22 @@ def get_response(user_input, conversation_history):
     ]
 
     try:
-        response = client.chat.completions.create(
-            model="gpt-3.5-turbo-16k",
-            messages=messages,
-            temperature=1,
-            max_tokens=2560,
-            top_p=1,
-            frequency_penalty=0.9
-        )
+def get_response(user_input, conversation_history):
+    messages = [
+        {"role": "system", "content": conversation_history},
+        {"role": "user", "content": user_input}
+    ]
 
-        generated_text = response.choices[0].message['content']
+    response = openai.ChatCompletion.create(
+        model="gpt-3.5-turbo-16k",
+        messages=messages,
+        temperature=1,
+        max_tokens=2560,
+        top_p=1,
+        frequency_penalty=0.9
+    )
+
+    generated_text = response.choices[0].message['content']
         print("Generated text:", generated_text)
 
         # Update conversation history
