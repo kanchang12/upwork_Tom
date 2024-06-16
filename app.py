@@ -5,79 +5,29 @@ import openai
 import re
 import sys
 import os
-from pymongo import MongoClient  # Ensure this import is present
+from pymongo import MongoClient
 from pymongo.errors import ServerSelectionTimeoutError
 from flask_cors import CORS
 
-
 app = Flask(__name__)
-CORS(app) 
+CORS(app)
+
+# Initialize MongoDB client
 MONGODB_URI = "mongodb+srv://kanchang12:Ob3uROyf8rtbEOwx@cluster0.sle630c.mongodb.net/upwrok?retryWrites=true&w=majority&ssl=true"
 MONGODB_DB_NAME = "upwrok"
 MONGODB_COLLECTION_NAME = "files"
 
-# Initialize MongoDB client with SSL parameters
-client1 = MongoClient(MONGODB_URI)  # Use 'CERT_REQUIRED' for stricter verification
+client1 = MongoClient(MONGODB_URI)
 db = client1.get_database(MONGODB_DB_NAME)
 collection = db.get_collection(MONGODB_COLLECTION_NAME)
 
-def read_files_from_database(collection):
-    aggregated_text = ""
-    cursor = collection.find({}, {"content": 1, "_id": 0})
-    for doc in cursor:
-        file_content = doc.get("content", "")
-        aggregated_text += str(file_content) + "\n"  # Add file content to aggregated text
-    return aggregated_text.strip()  # Remove trailing newline if exists
-
-def update_aggregate_text():
-    aggregated_text = read_files_from_database(collection)
-    return aggregated_text
-
-
-
-
-
-
-
-@app.route('/')
-def index():
-    return render_template('index.html')
-
-
-
+# Initialize OpenAI client
 openai_api_key = os.getenv("OPENAI_API_KEY")
 client = openai.Client(api_key=openai_api_key)
 
-conversation_history = system_instructions
-
-def get_response(user_input, conversation_history):
-    messages = [
-        {"role": "system", "content": conversation_history},
-        {"role": "user", "content": user_input}
-    ]
-
-    message = client.chat.completions.create(
-        model="gpt-3.5-turbo-16k",
-        messages=messages,
-        temperature=1,
-        max_tokens=2560,
-        top_p=1,
-        frequency_penalty=0.9
-    )
-
-    generated_text = message.choices[0].message.content
-    print("1", generated_text)
+# System instructions for the AI model
+system_instructions = """
     
-    # Update conversation history
-    conversation_history += f"\nUser: {user_input}\nAssistant: {generated_text}"
-    
-    return generated_text, conversation_history
-
-def get_claude_response(user_input):
-    global conversation_history
-    aggregated_text = update_aggregate_text()
-
-    system_instructions = f"""
     Purpose:
     Your primary goal is to provide accurate, concise responses to assist the business owner. You will use the data in the variable {aggregated_text} and, if needed, refer to your public training data.
 
@@ -216,13 +166,53 @@ def get_claude_response(user_input):
     Chatbot: "The Brick property is X miles from the nearest airport."
     """
 
+# Initialize conversation history
+conversation_history = system_instructions
+
+def read_files_from_database(collection):
+    aggregated_text = ""
+    cursor = collection.find({}, {"content": 1, "_id": 0})
+    for doc in cursor:
+        file_content = doc.get("content", "")
+        aggregated_text += str(file_content) + "\n"
+    return aggregated_text.strip()
+
+def update_aggregate_text():
+    aggregated_text = read_files_from_database(collection)
+    return aggregated_text
+
+def get_response(user_input, conversation_history):
+    messages = [
+        {"role": "system", "content": conversation_history},
+        {"role": "user", "content": user_input}
+    ]
+
+    response = client.chat.completions.create(
+        model="gpt-3.5-turbo-16k",
+        messages=messages,
+        temperature=1,
+        max_tokens=2560,
+        top_p=1,
+        frequency_penalty=0.9
+    )
+
+    generated_text = response.choices[0].message.content
+    conversation_history += f"\nUser: {user_input}\nAssistant: {generated_text}"
+    
+    return generated_text, conversation_history
+
+def get_claude_response(user_input):
+    global conversation_history
+    aggregated_text = update_aggregate_text()
+
+    system_instructions_with_data = system_instructions.format(aggregated_text=aggregated_text)
+
     # Update conversation history with new instructions
-    conversation_history = f"{conversation_history}\n{system_instructions}"
+    conversation_history = f"{conversation_history}\n{system_instructions_with_data}"
 
     generated_text, conversation_history = get_response(user_input, conversation_history)
     
     return generated_text, conversation_history
-
 
 def find_best_match(partial_name, valid_names):
     for name in valid_names:
@@ -230,61 +220,50 @@ def find_best_match(partial_name, valid_names):
             return name
     return " "
 
+@app.route('/')
+def index():
+    return render_template('index.html')
 
 @app.route('/process_command', methods=['POST'])
 def process_command():
     user_input = request.json.get('user_input')
 
     # Get response from OpenAI based on aggregated text
-    claude_response = get_claude_response(user_input)
+    claude_response, conversation_history = get_claude_response(user_input)
 
-    # Check if the response is a simple message
     if "FETCH RECORD" not in claude_response and "UPDATE RECORD" not in claude_response:
-        # Return the response as is
         return jsonify({"extracted_text": claude_response})
-
 
     # Handle specific actions
     results = []
     words = []
 
-    # Split response by space and process each word, treating words enclosed in * as single words
     pattern = re.compile(r'\*(.*?)\*|(\S+)')
     words = [match.group(1) or match.group(2) for match in pattern.finditer(claude_response)]
 
-    print(f"Words extracted: {words}")  # Debug: Print extracted words
+    print(f"Words extracted: {words}")
 
     i = 0
     while i < len(words):
         action = words[i].strip()
-        print(f"Action: {action}")  # Debug: Print current action
         i += 1
         if i < len(words):
             args = words[i].strip()
-            print(f"Args: {args}")  # Debug: Print current arguments
             if action == 'FETCH' and (args == 'RECORD' or not args):
-                # Handle FETCH RECORD if needed
                 result = claude_response
                 results.append(result)
             elif action == 'UPDATE' and args == 'RECORD':
-                print("In UPDATE RECORD block")  # Debug: Print update record block entry
-                if i + 2 < len(words):  # Check if there are enough words
-                    file_name = words[i+1]
+                if i + 2 < len(words):
+                    file_name = words[i + 1]
                     variable_name = words[i + 2]
                     new_value = ' '.join(words[i + 3:])
-                    print(f"File name: {file_name}")  # Debug: Print file name
-                    print(f"Variable name: {variable_name}")  # Debug: Print variable name
-                    print(f"New value: {new_value}")  # Debug: Print new value
-
-                    # Call update_record function
                     result = update_record(db, file_name, variable_name, new_value)
-
                     results.append(result)
-                    i += 3 + len(new_value.split())  # Move to the next action
+                    i += 3 + len(new_value.split())
                 else:
                     result = 'Invalid arguments for UPDATE RECORD'
                     results.append(result)
-                    i += 3  # Move to the next action even if it's invalid
+                    i += 3
             elif action == 'ADD' and args == 'RECORD':
                 pass  # Handle ADD RECORD similarly
             elif action == 'ADD' and args == 'ALERT':
@@ -295,25 +274,17 @@ def process_command():
                 pass
         i += 1
 
-    # Prepare response
     response_text = '\n'.join(results)
     response_json = {"extracted_text": response_text}
     return jsonify(response_json)
 
-
-import re
-
 def update_record(db, file_name, variable_name, new_value):
     collection = db[MONGODB_COLLECTION_NAME]
-    # Find the document with the given file name
     doc = collection.find_one({"filename": file_name})
     if not doc:
         return f"File {file_name} not found in the database"
 
-    # Get the content field
     content = doc.get("content", "")
-
-    # Search within the content field for the variable name
     lines = str(content).split("\n")
     updated_lines = []
     matched_variable = None
@@ -329,23 +300,11 @@ def update_record(db, file_name, variable_name, new_value):
     if matched_variable is None:
         return f"Variable {variable_name} not found in file {file_name}"
 
-    # Update the document with the new content
     new_content = "\n".join(updated_lines)
-    collection.update_one(
-        {"_id": doc["_id"]},
-        {"$set": {"content": new_content}}
-    )
-  
-
-
-    # Update the aggregate text after updating the document
+    collection.update_one({"_id": doc["_id"]}, {"$set": {"content": new_content}})
     update_aggregate_text()
 
     return f"Updated {file_name}: {variable_name} set to {new_value}, Previous {variable_name} = \"{old_value}\""
-
-
-
-
 
 if __name__ == '__main__':
     app.run(debug=True)
