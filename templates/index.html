@@ -81,13 +81,52 @@
 </div>
 
 
-    <script>
+      <script>
         // Function to handle Enter key press
         function handleKeyPress(event) {
             if (event.key === 'Enter') {
-                event.preventDefault();
                 sendMessage();
             }
+        }
+
+        function aggregateData() {
+            fetch('/aggregate_data')
+                .then(response => {
+                    if (response.ok) {
+                        return response.json();
+                    } else if (response.status === 401) {
+                        throw new Error('Token expired');
+                    } else {
+                        throw new Error('Aggregation failed');
+                    }
+                })
+                .then(data => {
+                    alert(data.message);
+                })
+                .catch(error => {
+                    if (error.message === 'Token expired') {
+                        alert('Token expired. Please regenerate the token.');
+                        showTokenRegenerationButton();
+                    } else {
+                        alert("Error during aggregation: " + error);
+                    }
+                });
+        }
+
+        function showTokenRegenerationButton() {
+            document.getElementById('tokenRegeneration').style.display = 'block';
+        }
+
+        function regenerateToken() {
+            fetch('/regenerate_token_background', { method: 'POST' })
+                .then(response => response.json())
+                .then(data => {
+                    alert(data.message);
+                    document.getElementById('tokenRegeneration').style.display = 'none';
+                })
+                .catch(error => {
+                    alert("Error regenerating token: " + error);
+                });
         }
 
         // Function to start voice recognition
@@ -158,65 +197,6 @@
             speech.pitch = 1;
             window.speechSynthesis.speak(speech);
         }
-
-        // Function to aggregate data
-        function aggregateData() {
-            fetch('/aggregate_data')
-                .then(response => {
-                    if (response.ok) {
-                        return response.text();
-                    } else if (response.status === 401) {
-                        throw new Error('Token expired');
-                    } else {
-                        throw new Error('Aggregation failed');
-                    }
-                })
-                .then(data => {
-                    alert(data);
-                })
-                .catch(error => {
-                    if (error.message === 'Token expired') {
-                        alert('Token expired. Please regenerate the token.');
-                        showTokenRegenerationButton();
-                    } else {
-                        alert("Error during aggregation: " + error);
-                    }
-                });
-        }
-
-        // Function to show token regeneration button
-        function showTokenRegenerationButton() {
-            document.getElementById('tokenRegeneration').style.display = 'block';
-        }
-
-        // Function to regenerate token
-        function regenerateToken() {
-            fetch('/regenerate_token_background', { method: 'POST' })
-                .then(response => response.json())
-                .then(data => {
-                    alert(data.message);
-                    document.getElementById('tokenRegeneration').style.display = 'none';
-                })
-                .catch(error => {
-                    alert("Error regenerating token: " + error);
-                });
-        }
-
-        // Handle form submission for query form
-        document.getElementById('queryForm').onsubmit = function(event) {
-            event.preventDefault();
-            const formData = new FormData(this);
-            fetch('/process_command', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/x-www-form-urlencoded'
-                },
-                body: new URLSearchParams(formData).toString()
-            })
-            .then(response => response.json())
-            .then(data => console.log(data))
-            .catch(error => console.error('Error:', error));
-        };
     </script>
 
 </body>
