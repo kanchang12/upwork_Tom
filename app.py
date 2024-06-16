@@ -276,35 +276,39 @@ import re
 
 def update_record(db, file_name, variable_name, new_value):
     collection = db[MONGODB_COLLECTION_NAME]
+
     # Find the document with the given file name
     doc = collection.find_one({"filename": file_name})
     if not doc:
         return f"File {file_name} not found in the database"
 
-    # Get the content field
-    content = doc.get("content", "")
+    # Check if the variable name exists directly in the keys
+    if variable_name in doc:
+        matched_variable = variable_name
+        old_value = doc[variable_name]
+    else:
+        # Search within the content field for the variable name
+        matched_variable = None
+        content = doc.get("content", "")
+        for line in str(content).split("\n"):
+            if variable_name.lower() in line.lower():
+                matched_variable = line.split(":")[0].strip()
+                # Extract old value if found
+                old_value = line.split(":")[1].strip()
+                print(old_value)
+                break
 
-    # Search within the content field for the variable name
-    lines = str(content).split("\n")
-    updated_lines = []
-    matched_variable = None
-    for line in lines:
-        if variable_name.lower() in line.lower():
-            matched_variable = line.split(":")[0].strip()
-            old_value = line.split(":")[1].strip()
-            new_line = f"{matched_variable}: {new_value}\nPrevious Value: {old_value}"
-            updated_lines.append(new_line)
-        else:
-            updated_lines.append(line)
-
-    if matched_variable is None:
+    if old_value is None:
         return f"Variable {variable_name} not found in file {file_name}"
 
+    # Update content with new value and previous value
+    if doc["filename"].lower() == file_name.lower():
+        content[f"{variable_name}"] = f"{new_value}"
+
     # Update the document with the new content
-    new_content = "\n".join(updated_lines)
     collection.update_one(
-        {"_id": doc["_id"]},
-        {"$set": {"content": new_content}}
+    {"_id": doc["_id"]},
+    {"$set": {"content": content}}
     )
   
 
