@@ -215,10 +215,13 @@ def get_response(user_input, conversation_history):
 @app.route('/process_command', methods=['POST'])
 def process_command():
     global conversation_history
-    if request.content_type != 'application/json':
-        return jsonify({"error": "Unsupported Media Type. Content-Type must be application/json"}), 415
+    if request.content_type == 'application/json':
+        user_input = request.json.get("user_input")
+    elif request.content_type == 'application/x-www-form-urlencoded':
+        user_input = request.form.get("user_input")
+    else:
+        return jsonify({"error": "Unsupported Media Type. Content-Type must be application/json or application/x-www-form-urlencoded"}), 415
 
-    user_input = request.json.get("user_input")
     if not user_input:
         return jsonify({"response": "No user input provided."}), 400
 
