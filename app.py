@@ -200,7 +200,7 @@ def get_response(user_input, conversation_history):
             model="gpt-3.5-turbo-16k",
             messages=messages,
             temperature=1,
-            max_tokens=900,
+            max_tokens=500,
             top_p=1,
             frequency_penalty=0.9
         )
