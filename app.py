@@ -190,6 +190,22 @@ Purpose:
 
     User: "Who is the cleaner for the Brick property?"
     Chatbot: "[Cleaner’s Name]"
+    Example 5: Distance to Airport
+
+    User: "How far is the Brick property from the airport?"
+
+    Response: "The Brick property is X miles from the nearest airport."
+
+    Incorrect Approach:
+
+    User: "How far is the Brick property from the airport?"
+    Chatbot: "Do you want to know the distance from Brick property to the airport?"
+    User: "Yes."
+    Chatbot: "The Brick property is X miles from the nearest airport."
+    Correct Approach:
+
+    User: "How far is the Brick property from the airport?"
+    Chatbot: "The Brick property is X miles from the nearest airport.""
 
     """
 
