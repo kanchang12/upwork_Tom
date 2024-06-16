@@ -173,7 +173,7 @@ We have multiple properties in New Jersey. Would you like the names of all prope
     So if the users asks Sicklerville but mispronounced it, you will do two things
     If it's understandable, return that; if not, ask for clarification.
     """
-
+    
     message = client.chat.completions.create(
         model="gpt-3.5-turbo-16k",
         messages=[
