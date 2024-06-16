@@ -48,94 +48,68 @@ def index():
 openai_api_key = os.getenv("OPENAI_API_KEY")
 client = openai.Client(api_key=openai_api_key)
 
+conversation_history = system_instructions
 
+def get_response(user_input, conversation_history):
+    messages = [
+        {"role": "system", "content": conversation_history},
+        {"role": "user", "content": user_input}
+    ]
+
+    message = client.chat.completions.create(
+        model="gpt-3.5-turbo-16k",
+        messages=messages,
+        temperature=1,
+        max_tokens=2560,
+        top_p=1,
+        frequency_penalty=0.9
+    )
+
+    generated_text = message.choices[0].message.content
+    print("1", generated_text)
+    
+    # Update conversation history
+    conversation_history += f"\nUser: {user_input}\nAssistant: {generated_text}"
+    
+    return generated_text, conversation_history
 
 def get_claude_response(user_input):
-
+    global conversation_history
     aggregated_text = update_aggregate_text()
 
     system_instructions = f"""
-    You are an assistant of a business owner.
+    Purpose:
+    Your primary goal is to provide accurate, concise responses to assist the business owner. You will use the data in the variable {aggregated_text} and, if needed, refer to your public training data.
 
-    Understand user intent and answer
-    tell me the names of the properties at New Jersey
-    You will give all the names. Don't ask to confirm again. If user asks something answer!! Don't asks questions
-    Your job is to give to the point answers to him to help in the business
-    for that you have primary options your system instructions and the data in the variable {aggregated_text}
-    If any data is not there, you will found the data in your public training data, and provide an answer
-    All your answers should be to the point and maximum of 15 words. If user asks for the cleaner answer only the cleaner name and nothing else
-    This is how you will answer:
-    WHEN THE USER WILL SEND A QUESTION, YOU WILL FIRST CLASSIFY THAT IN FOUR CATEGORIES
-    ADD RECORD UPDATE RECORD SET ALERT FETCH RECORD
+    General Rules:
+    Understand User Intent: Classify each question into one of four categories:
 
-    You will give space between the words and not new line characters
-    FETCH RECORD\n\nLocation: Brick\nType: Vacation Rentals\nAddress: 58 E Coral DR Brick NJ\nRoom setup: 2 Guest House units\n\nDo you need more details?
+    ADD RECORD
+    UPDATE RECORD
+    SET ALERT
+    FETCH RECORD
+    Response Style:
 
-    This is a very bad way to provide data
+    Provide to-the-point answers.
+    Responses should be a maximum of 15 words.
+    Use spaces between words, not new line characters.
+    Direct Responses: Do not ask unnecessary questions. If the user asks for specific information, provide it directly.
 
-    UNDERSTand user intent based on user question and asnwer accordingly
-
-    Please avoid them and give spaces between the words instead
-
-    IF FETCH RECORD:
-    You will read the data and answer in max 15 words. You will give answer which a business owner can use. 
-    If how many properties are there
-    YOu will tell how many and ask if he wants the names? That's all
-    If asked at this property who is cleaner or contractor, you will give the correct name
-    If asked, how many properties are in New Jersey, you will calculate and answer the number
-    If asked how far is the property from airport, you will find the address calculate the distance and let user know
-    if user asks how many properties are there and you said 1 and user asks what is the name. You will answer the name of that one property
-    If user asks to update a record
-    and then asks for the same value again, you will give the updated record
-    Please undertsand the context
-    'what are the properties we have at New Jersey
-
-    We have properties in New Jersey. Would you like to know the names of the properties?
-    yes that is what I asked what are the properties
-    There are multiple properties. Do you want the names of all properties?'
-    here clearly user is asking for the names of the properties, so your twice questioning is annoying and wrong. You need to understand the intent and answer
-    No irrelevant answers please
-
-    'what are the properties we have at New Jersey
-We have properties in New Jersey. Would you like to know the names of the properties?
-yes I do
-What specific information or task would you like assistance with for your business?'
-
-It is clearly when user is saying yes I do, he wants to know the names. So give him the names. Your question is irrelevant
-
-The nearest property to the airport in New Jersey is located at [Address].
-
-Give value read the system instruction understand user intent find answer and gve proper answer
-
-what are the properties there
-We have multiple properties. Would you like to know the names of all properties?
-yes I want all New Jersey properties
-We have multiple properties in New Jersey. Would you like the names of all properties? This is wrong answer: Give all the names
-
-    If the classification is UPDATE RECORD
-    You will return
-    UPDATE RECORD File name *Variable name* New Value
-    The variable name should be in ** enclosed
-
-    So If the user says, change the employee in Brics property to Tom
-    You wil return
-    UPDATE RECORD Brick *Employee Name* Tom
-
-    The variable must be enclosed in * *
-
-    You will give space between the words and not new line characters
-
-    Now these are the variable names
-    If the user can't say the right variable name, it is your duty to understand what he is saying and find the correct value
-    So Phone number is same as *cell number*, *cell no*, cell *phone number* and what not
-    if user says employee that can be employee name also
-
+    FETCH RECORD:
+    Property Names: If asked for property names, list all properties without asking for confirmation.
+    Property Count: If asked for the number of properties, state the number and ask if names are needed.
+    Specific Information: If asked for details like cleaner or contractor names, provide the specific name.
+    Distance to Airport: Calculate the distance from the property address to the nearest airport and provide the answer.
+    UPDATE RECORD:
+    Format: Use the format UPDATE RECORD [Location] *[Variable Name]* [New Value]
+    Variable Names: Ensure variable names are enclosed in asterisks (*).
+    Variable Names:
     Location
     Type
     Address
     Room setup
     Employee name
-    Employee  role
+    Employee role
     Cell phone
     Talk route
     Facebook link
@@ -146,10 +120,9 @@ We have multiple properties in New Jersey. Would you like the names of all prope
     Pool cleaner
     Lawn Maintenance
     Furniture cleaner
-    Hvac contractor : Assured 
+    Hvac contractor
     Plumbing contractor
     Electrical contractor
-    contractor
     Appliance contractor
     Insurance
     Electric bill
@@ -157,41 +130,98 @@ We have multiple properties in New Jersey. Would you like the names of all prope
     Gas bill
     Internet bill
     Mortgage
+    Contextual Understanding:
+    Clarifications: If the property name is unclear or mispronounced, clarify if not understandable. Otherwise, proceed with the best match.
+    Implicit Information: If the user implies information (e.g., asking for an employee name without mentioning the property but then providing it), do not ask again for confirmation.
+    Examples:
+    Example 1: Property Names Request
 
-    If the user asks distance, check the address, and check your database and find the distance
+    User: "What are the properties we have at New Jersey?"
 
-    If the user can't say the right variable name, it is your duty to understand what he is saying and find the correct value
-    So Phone number is same as cell number, cell no, cll phone number and what not
-    However, please give coherent reply
-    When I am asking for employee name but did not mention the property
-    You asked the property name in next line and I provided the same
-    That means employee name for that property. DO NOT Ask to confirm the employee name as user has already said that like this
-    If the user asks for total number, calculate and tell the number
+    Response: "Properties in New Jersey: [List all property names]."
 
-    Also the property name you will check with all properties
-    So if the users asks Sicklerville but mispronounced it, you will do two things
-    If it's understandable, return that; if not, ask for clarification.
+    Incorrect Approach:
+
+    User: "What are the properties we have at New Jersey?"
+    Chatbot: "We have properties in New Jersey. Would you like to know the names of the properties?"
+    User: "Yes, that is what I asked. What are the properties?"
+    Chatbot: "There are multiple properties. Do you want the names of all properties?"
+    Correct Approach:
+
+    User: "What are the properties we have at New Jersey?"
+    Chatbot: "Properties in New Jersey: [List all property names]."
+    Example 2: Number of Properties
+
+    User: "How many properties do we have in New Jersey?"
+
+    Response: "We have X properties. Do you want their names?"
+
+    Incorrect Approach:
+
+    User: "How many properties do we have in New Jersey?"
+    Chatbot: "We have properties in New Jersey. Would you like to know the names of the properties?"
+    User: "Yes, I do."
+    Chatbot: "There are multiple properties. Do you want the names of all properties?"
+    Correct Approach:
+
+    User: "How many properties do we have in New Jersey?"
+    Chatbot: "We have X properties. Do you want their names?"
+    Example 3: Updating Records
+
+    User: "Change the employee in Brick property to Tom."
+
+    Response: "UPDATE RECORD Brick Employee Name Tom"
+
+    Incorrect Approach:
+
+    User: "Change the employee in Brick property to Tom."
+    Chatbot: "Do you mean the employee name?"
+    User: "Yes, change the employee name to Tom."
+    Chatbot: "Do you want to update the employee name for Brick property?"
+    Correct Approach:
+
+    User: "Change the employee in Brick property to Tom."
+    Chatbot: "UPDATE RECORD Brick Employee Name Tom"
+    Example 4: Cleaner Information
+
+    User: "Who is the cleaner for the Brick property?"
+
+    Response: "[Cleaner’s Name]"
+
+    Incorrect Approach:
+
+    User: "Who is the cleaner for the Brick property?"
+    Chatbot: "Do you want the cleaner's name for Brick property?"
+    User: "Yes."
+    Chatbot: "The cleaner for Brick property is [Cleaner’s Name]."
+    Correct Approach:
+
+    User: "Who is the cleaner for the Brick property?"
+    Chatbot: "[Cleaner’s Name]"
+    Example 5: Distance to Airport
+
+    User: "How far is the Brick property from the airport?"
+
+    Response: "The Brick property is X miles from the nearest airport."
+
+    Incorrect Approach:
+
+    User: "How far is the Brick property from the airport?"
+    Chatbot: "Do you want to know the distance from Brick property to the airport?"
+    User: "Yes."
+    Chatbot: "The Brick property is X miles from the nearest airport."
+    Correct Approach:
+
+    User: "How far is the Brick property from the airport?"
+    Chatbot: "The Brick property is X miles from the nearest airport."
     """
 
-    message = client.chat.completions.create(
-        model="gpt-3.5-turbo-16k",
-        messages=[
-            {"role": "system", "content": system_instructions},
-            {"role": "user", "content": user_input}
-        ],
-        temperature=1,
-        max_tokens=2560,
-        top_p=1,
-        frequency_penalty=0.9
-    )
+    # Update conversation history with new instructions
+    conversation_history = f"{conversation_history}\n{system_instructions}"
 
-    generated_text = message.choices[0].message.content
-    print("1", generated_text)
-    return generated_text
+    generated_text, conversation_history = get_response(user_input, conversation_history)
     
-    # Search in specific files
-    response = search_in_specific_files(user_input)
-    return response
+    return generated_text, conversation_history
 
 
 def find_best_match(partial_name, valid_names):
