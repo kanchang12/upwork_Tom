@@ -81,27 +81,85 @@
 </div>
 
 
-<script>
-
-    // Function to handle Enter key press
-    function handleKeyPress(event) {
-        if (event.key === 'Enter') {
-            sendMessage();
-        }
-    }
-        function aggregateData() {
-            fetch('/aggregate_data')
-                .then(response => response.json())
-                .then(data => {
-                    alert(data.message);
-                })
-                .catch(error => {
-                    alert("Error during aggregation: " + error);
-                });
-        }
-    </script>
-
     <script>
+        // Function to handle Enter key press
+        function handleKeyPress(event) {
+            if (event.key === 'Enter') {
+                event.preventDefault();
+                sendMessage();
+            }
+        }
+
+        // Function to start voice recognition
+        function startVoiceRecognition() {
+            if ('webkitSpeechRecognition' in window) {
+                var recognition = new webkitSpeechRecognition();
+                recognition.lang = 'en-US';
+                recognition.start();
+
+                recognition.onresult = function(event) {
+                    var transcript = event.results[0][0].transcript;
+                    document.getElementById("messageInput").value = transcript;
+
+                    // Automatically submit after 2 seconds
+                    setTimeout(function() {
+                        sendMessage();
+                    }, 2000);
+                };
+
+                recognition.onerror = function(event) {
+                    console.error('Speech recognition error:', event.error);
+                };
+            } else {
+                console.error('Speech recognition not supported by this browser.');
+            }
+        }
+
+        // Function to send a message
+        function sendMessage() {
+            var userInput = document.getElementById("messageInput").value;
+            var messagesDiv = document.getElementById("messages");
+            messagesDiv.innerHTML += '<div class="message sent">' + userInput + '</div>';
+
+            document.getElementById("messageInput").value = "";
+
+            fetch('/process_command', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    user_input: userInput
+                })
+            })
+            .then(response => response.json())
+            .then(data => {
+                var responseText = data.response;
+                messagesDiv.innerHTML += '<div class="message received">' + responseText + '</div>';
+            })
+            .catch(error => {
+                console.error('Error sending message:', error);
+            });
+        }
+
+        // Function to read aloud the last message
+        function speakLastMessage() {
+            var messagesDiv = document.getElementById("messages");
+            var lastMessage = messagesDiv.lastElementChild.textContent;
+            speakMessage(lastMessage);
+        }
+
+        // Function to read aloud a message
+        function speakMessage(message) {
+            var speech = new SpeechSynthesisUtterance();
+            speech.text = message;
+            speech.volume = 1;
+            speech.rate = 1;
+            speech.pitch = 1;
+            window.speechSynthesis.speak(speech);
+        }
+
+        // Function to aggregate data
         function aggregateData() {
             fetch('/aggregate_data')
                 .then(response => {
@@ -126,10 +184,12 @@
                 });
         }
 
+        // Function to show token regeneration button
         function showTokenRegenerationButton() {
             document.getElementById('tokenRegeneration').style.display = 'block';
         }
 
+        // Function to regenerate token
         function regenerateToken() {
             fetch('/regenerate_token_background', { method: 'POST' })
                 .then(response => response.json())
@@ -141,94 +201,23 @@
                     alert("Error regenerating token: " + error);
                 });
         }
+
+        // Handle form submission for query form
+        document.getElementById('queryForm').onsubmit = function(event) {
+            event.preventDefault();
+            const formData = new FormData(this);
+            fetch('/process_command', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/x-www-form-urlencoded'
+                },
+                body: new URLSearchParams(formData).toString()
+            })
+            .then(response => response.json())
+            .then(data => console.log(data))
+            .catch(error => console.error('Error:', error));
+        };
     </script>
-
-
-<script>
-    // Function to start voice recognition
-    function startVoiceRecognition() {
-        if ('webkitSpeechRecognition' in window) {
-            var recognition = new webkitSpeechRecognition();
-            recognition.lang = 'en-US';
-            recognition.start();
-            
-            recognition.onresult = function(event) {
-                var transcript = event.results[0][0].transcript;
-                document.getElementById("messageInput").value = transcript;
-                
-                // Automatically submit after 2 seconds
-                setTimeout(function() {
-                    sendMessage();
-                }, 2000);
-            };
-            
-            recognition.onerror = function(event) {
-                console.error('Speech recognition error:', event.error);
-            };
-        } else {
-            console.error('Speech recognition not supported by this browser.');
-        }
-    }
-
-      document.getElementById('queryForm').onsubmit = function(event) {
-        event.preventDefault();
-        const formData = new FormData(this);
-        fetch('/process_command', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/x-www-form-urlencoded'
-            },
-            body: new URLSearchParams(formData).toString()
-        })
-        .then(response => response.json())
-        .then(data => console.log(data))
-        .catch(error => console.error('Error:', error));
-    };
-
-            // Function to send a message
-            function sendMessage() {
-                var userInput = document.getElementById("messageInput").value;
-                var messagesDiv = document.getElementById("messages");
-                messagesDiv.innerHTML += '<div class="message sent">' + userInput + '</div>';
-
-                document.getElementById("messageInput").value = "";
-
-                fetch('/process_command', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json'
-                    },
-                    body: JSON.stringify({
-                        user_input: userInput
-                    })
-                })
-                .then(response => response.json())
-                .then(data => {
-                    var responseText = data.extracted_text;
-                    messagesDiv.innerHTML += '<div class="message received">' + responseText + '</div>';
-                })
-                .catch(error => {
-                    console.error('Error sending message:', error);
-                });
-            }
-
-    // Function to read aloud the last message
-    function speakLastMessage() {
-        var messagesDiv = document.getElementById("messages");
-        var lastMessage = messagesDiv.lastElementChild.textContent;
-        speakMessage(lastMessage);
-    }
-
-    // Function to read aloud a message
-    function speakMessage(message) {
-        var speech = new SpeechSynthesisUtterance();
-        speech.text = message;
-        speech.volume = 1;
-        speech.rate = 1;
-        speech.pitch = 1;
-        window.speechSynthesis.speak(speech);
-    }
-</script>
 
 </body>
 </html>
