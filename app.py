@@ -212,15 +212,17 @@ def get_response(user_input, conversation_history):
     except Exception as e:
         return f"Error in get_response: {str(e)}", conversation_history
 
-@app.route('/process_command', methods=['GET', 'POST'])
+@app.route('/process_command', methods=['POST'])
 def process_command():
     global conversation_history
+    if request.content_type != 'application/json':
+        return jsonify({"error": "Unsupported Media Type. Content-Type must be application/json"}), 415
+
     user_input = request.json.get("user_input")
     if not user_input:
         return jsonify({"response": "No user input provided."}), 400
 
     response_text, conversation_history = get_response(user_input, conversation_history)
     return jsonify({"response": response_text})
-
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=8000)
