@@ -1,66 +1,142 @@
+
 import requests
 from flask import Flask, request, jsonify, render_template
 import pymongo
 import openai
 import re
+import sys
 import os
-from pymongo import MongoClient
+from pymongo import MongoClient  # Ensure this import is present
+from pymongo.errors import ServerSelectionTimeoutError
 from flask_cors import CORS
 
-app = Flask(__name__)
-CORS(app)
 
-# MongoDB connection details
+app = Flask(__name__)
+CORS(app) 
 MONGODB_URI = "mongodb+srv://kanchang12:Ob3uROyf8rtbEOwx@cluster0.sle630c.mongodb.net/upwrok?retryWrites=true&w=majority&ssl=true"
 MONGODB_DB_NAME = "upwrok"
 MONGODB_COLLECTION_NAME = "files"
 
-# Initialize MongoDB client
-client1 = MongoClient(MONGODB_URI)
+# Initialize MongoDB client with SSL parameters
+client1 = MongoClient(MONGODB_URI)  # Use 'CERT_REQUIRED' for stricter verification
 db = client1.get_database(MONGODB_DB_NAME)
 collection = db.get_collection(MONGODB_COLLECTION_NAME)
+
+def read_files_from_database(collection):
+    aggregated_text = ""
+    cursor = collection.find({}, {"content": 1, "_id": 0})
+    for doc in cursor:
+        file_content = doc.get("content", "")
+        aggregated_text += str(file_content) + "\n"  # Add file content to aggregated text
+    return aggregated_text.strip()  # Remove trailing newline if exists
+
+def update_aggregate_text():
+    aggregated_text = read_files_from_database(collection)
+    return aggregated_text
+
+
+
+
+
+
 
 @app.route('/')
 def index():
     return render_template('index.html')
 
-# OpenAI API key
+
+
 openai_api_key = os.getenv("OPENAI_API_KEY")
-openai.api_key = openai_api_key
+client = openai.Client(api_key=openai_api_key)
 
-conversation_history = """
-Purpose:
-    Your primary goal is to provide accurate, concise responses to assist the business owner. You will use the data in the variable {aggregated_text} and, if needed, refer to your public training data.
 
-    General Rules:
-    Understand User Intent: Classify each question into one of four categories:
 
-    ADD RECORD
-    UPDATE RECORD
-    SET ALERT
-    FETCH RECORD
-    Response Style:
+def get_claude_response(user_input):
 
-    Provide to-the-point answers.
-    Responses should be a maximum of 15 words.
-    Use spaces between words, not new line characters.
-    Direct Responses: Do not ask unnecessary questions. If the user asks for specific information, provide it directly.
+    aggregated_text = update_aggregate_text()
 
-    FETCH RECORD:
-    Property Names: If asked for property names, list all properties without asking for confirmation.
-    Property Count: If asked for the number of properties, state the number and ask if names are needed.
-    Specific Information: If asked for details like cleaner or contractor names, provide the specific name.
-    Distance to Airport: Calculate the distance from the property address to the nearest airport and provide the answer.
-    UPDATE RECORD:
-    Format: Use the format UPDATE RECORD [Location] *[Variable Name]* [New Value]
-    Variable Names: Ensure variable names are enclosed in asterisks (*).
-    Variable Names:
+    system_instructions = f"""
+    You are an assistant of a business owner.
+
+    Understand user intent and answer
+    tell me the names of the properties at New Jersey
+    You will give all the names. Don't ask to confirm again. If user asks something answer!! Don't asks questions
+    Your job is to give to the point answers to him to help in the business
+    for that you have primary options your system instructions and the data in the variable {aggregated_text}
+    If any data is not there, you will found the data in your public training data, and provide an answer
+    All your answers should be to the point and maximum of 15 words. If user asks for the cleaner answer only the cleaner name and nothing else
+    This is how you will answer:
+    WHEN THE USER WILL SEND A QUESTION, YOU WILL FIRST CLASSIFY THAT IN FOUR CATEGORIES
+    ADD RECORD UPDATE RECORD SET ALERT FETCH RECORD
+
+    You will give space between the words and not new line characters
+    FETCH RECORD\n\nLocation: Brick\nType: Vacation Rentals\nAddress: 58 E Coral DR Brick NJ\nRoom setup: 2 Guest House units\n\nDo you need more details?
+
+    This is a very bad way to provide data
+
+    UNDERSTand user intent based on user question and asnwer accordingly
+
+    Please avoid them and give spaces between the words instead
+
+    IF FETCH RECORD:
+    You will read the data and answer in max 15 words. You will give answer which a business owner can use. 
+    If how many properties are there
+    YOu will tell how many and ask if he wants the names? That's all
+    If asked at this property who is cleaner or contractor, you will give the correct name
+    If asked, how many properties are in New Jersey, you will calculate and answer the number
+    If asked how far is the property from airport, you will find the address calculate the distance and let user know
+    if user asks how many properties are there and you said 1 and user asks what is the name. You will answer the name of that one property
+    If user asks to update a record
+    and then asks for the same value again, you will give the updated record
+    Please undertsand the context
+    'what are the properties we have at New Jersey
+
+    We have properties in New Jersey. Would you like to know the names of the properties?
+    yes that is what I asked what are the properties
+    There are multiple properties. Do you want the names of all properties?'
+    here clearly user is asking for the names of the properties, so your twice questioning is annoying and wrong. You need to understand the intent and answer
+    No irrelevant answers please
+
+    'what are the properties we have at New Jersey
+We have properties in New Jersey. Would you like to know the names of the properties?
+yes I do
+What specific information or task would you like assistance with for your business?'
+
+It is clearly when user is saying yes I do, he wants to know the names. So give him the names. Your question is irrelevant
+
+The nearest property to the airport in New Jersey is located at [Address].
+
+Give value read the system instruction understand user intent find answer and gve proper answer
+
+what are the properties there
+We have multiple properties. Would you like to know the names of all properties?
+yes I want all New Jersey properties
+We have multiple properties in New Jersey. Would you like the names of all properties? This is wrong answer: Give all the names
+
+    If the classification is UPDATE RECORD
+    You will return
+    UPDATE RECORD File name *Variable name* New Value
+    The variable name should be in ** enclosed
+
+    So If the user says, change the employee in Brics property to Tom
+    You wil return
+    UPDATE RECORD Brick *Employee Name* Tom
+
+    The variable must be enclosed in * *
+
+    You will give space between the words and not new line characters
+
+    Now these are the variable names
+    If the user can't say the right variable name, it is your duty to understand what he is saying and find the correct value
+    So Phone number is same as *cell number*, *cell no*, cell *phone number* and what not
+    if user says employee that can be employee name also
+
     Location
     Type
     Address
     Room setup
     Employee name
-    Employee role
+    Employee  role
     Cell phone
     Talk route
     Facebook link
@@ -71,9 +147,10 @@ Purpose:
     Pool cleaner
     Lawn Maintenance
     Furniture cleaner
-    Hvac contractor
+    Hvac contractor : Assured 
     Plumbing contractor
     Electrical contractor
+    contractor
     Appliance contractor
     Insurance
     Electric bill
@@ -81,172 +158,121 @@ Purpose:
     Gas bill
     Internet bill
     Mortgage
-    Contextual Understanding:
-    Clarifications: If the property name is unclear or mispronounced, clarify if not understandable. Otherwise, proceed with the best match.
-    Implicit Information: If the user implies information (e.g., asking for an employee name without mentioning the property but then providing it), do not ask again for confirmation.
-    Examples:
-    Example 1: Property Names Request
 
-    User: "What are the properties we have at New Jersey?"
+    If the user asks distance, check the address, and check your database and find the distance
 
-    Response: "Properties in New Jersey: [List all property names]."
+    If the user can't say the right variable name, it is your duty to understand what he is saying and find the correct value
+    So Phone number is same as cell number, cell no, cll phone number and what not
+    However, please give coherent reply
+    When I am asking for employee name but did not mention the property
+    You asked the property name in next line and I provided the same
+    That means employee name for that property. DO NOT Ask to confirm the employee name as user has already said that like this
+    If the user asks for total number, calculate and tell the number
 
-    Incorrect Approach:
+    Also the property name you will check with all properties
+    So if the users asks Sicklerville but mispronounced it, you will do two things
+    If it's understandable, return that; if not, ask for clarification.
+    """
 
-    User: "What are the properties we have at New Jersey?"
-    Chatbot: "We have properties in New Jersey. Would you like to know the names of the properties?"
-    User: "Yes, that is what I asked. What are the properties?"
-    Chatbot: "There are multiple properties. Do you want the names of all properties?"
-    Correct Approach:
+    message = client.chat.completions.create(
+        model="gpt-3.5-turbo-16k",
+        messages=[
+            {"role": "system", "content": system_instructions},
+            {"role": "user", "content": user_input}
+        ],
+        temperature=1,
+        max_tokens=2560,
+        top_p=1,
+        frequency_penalty=0.9
+    )
 
-    User: "What are the properties we have at New Jersey?"
-    Chatbot: "Properties in New Jersey: [List all property names]."
-    Example 2: Number of Properties
+    generated_text = message.choices[0].message.content
+    print("1", generated_text)
+    return generated_text
+    
+    # Search in specific files
+    response = search_in_specific_files(user_input)
+    return response
 
-    User: "How many properties do we have in New Jersey?"
 
-    Response: "We have X properties. Do you want their names?"
+def find_best_match(partial_name, valid_names):
+    for name in valid_names:
+        if partial_name in name:
+            return name
+    return " "
 
-    Incorrect Approach:
 
-    User: "How many properties do we have in New Jersey?"
-    Chatbot: "We have properties in New Jersey. Would you like to know the names of the properties?"
-    User: "Yes, I do."
-    Chatbot: "There are multiple properties. Do you want the names of all properties?"
-    Correct Approach:
-
-    User: "How many properties do we have in New Jersey?"
-    Chatbot: "We have X properties. Do you want their names?"
-    Example 3: Updating Records
-
-    User: "Change the employee in Brick property to Tom."
-
-    Response: "UPDATE RECORD Brick Employee Name Tom"
-
-    Incorrect Approach:
-
-    User: "Change the employee in Brick property to Tom."
-    Chatbot: "Do you mean the employee name?"
-    User: "Yes, change the employee name to Tom."
-    Chatbot: "Do you want to update the employee name for Brick property
-    Correct Approach:
-
-    User: "Change the employee in Brick property to Tom."
-    Chatbot: "UPDATE RECORD Brick Employee Name Tom"
-    Example 4: Cleaner Information
-
-    User: "Who is the cleaner for the Brick property?"
-
-    Response: "[Cleaner’s Name]"
-
-    Incorrect Approach:
-
-    User: "Who is the cleaner for the Brick property?"
-    Chatbot: "Do you want the cleaner's name for Brick property?"
-    User: "Yes."
-    Chatbot: "The cleaner for Brick property is [Cleaner’s Name]."
-    Correct Approach:
-
-    User: "Who is the cleaner for the Brick property?"
-    Chatbot: "[Cleaner’s Name]"
-    Example 5: Distance to Airport
-
-    User: "How far is the Brick property from the airport?"
-
-    Response: "The Brick property is X miles from the nearest airport."
-
-    Incorrect Approach:
-
-    User: "How far is the Brick property from the airport?"
-    Chatbot: "Do you want to know the distance from Brick property to the airport?"
-    User: "Yes."
-    Chatbot: "The Brick property is X miles from the nearest airport."
-    Correct Approach:
-
-    User: "How far is the Brick property from the airport?"
-    Chatbot: "The Brick property is X miles from the nearest airport."
-"""
-
-def search_database(query):
-    """Search the MongoDB database for the query and return relevant results."""
-    search_results = []
-    cursor = collection.find({"content": {"$regex": re.escape(query), "$options": "i"}})
-    for doc in cursor:
-        search_results.append(doc.get("content", ""))
-    return search_results
-
-def get_response(user_input, conversation_history):
-    try:
-        aggregated_text = read_files_from_database(collection)
-
-        # Search the database for the user query
-        search_results = search_database(user_input)
-
-        # If no search results are found, handle it gracefully
-        if not search_results:
-            search_response = "No relevant information found in the database."
-        else:
-            # Format the search results
-            search_response = "\n".join(search_results)
-
-        # Generate response using OpenAI GPT
-        messages = [
-            {"role": "system", "content": conversation_history.format(aggregated_text=aggregated_text)},
-            {"role": "user", "content": user_input},
-            {"role": "system", "content": f"Search results: {search_response}"}
-        ]
-
-        response = openai.ChatCompletion.create(
-            model="gpt-3.5-turbo-16k",
-            messages=messages,
-            temperature=1,
-            max_tokens=500,
-            top_p=1,
-            frequency_penalty=0.9
-        )
-
-        generated_text = response.choices[0].message['content']
-
-        # Update conversation history
-        conversation_history += f"\nUser: {user_input}\nAssistant: {generated_text}"
-
-        return generated_text, conversation_history
-    except Exception as e:
-        return f"Error in get_response: {str(e)}", conversation_history
-
-@app.route('/process_command', methods=['GET', 'POST'])
+@app.route('/process_command', methods=['POST'])
 def process_command():
-    global conversation_history
-    if request.content_type == 'application/json':
-        user_input = request.json.get("user_input")
-    elif request.content_type == 'application/x-www-form-urlencoded':
-        user_input = request.form.get("user_input")
-    else:
-        return jsonify({"error": "Unsupported Media Type. Content-Type must be application/json or application/x-www-form-urlencoded"}), 415
+    user_input = request.json.get('user_input')
 
-    if not user_input:
-        return jsonify({"response": "No user input provided."}), 400
+    # Get response from OpenAI based on aggregated text
+    claude_response = get_claude_response(user_input)
 
-    # Check if the user input is an update command
-    if user_input.startswith("UPDATE RECORD"):
-        words = user_input.split()
-        if len(words) >= 4:
-            file_name = words[2]
-            variable_name = words[3][1:-1]  # Remove '*' characters
-            new_value = ' '.join(words[4:])
-            result = update_record(db, file_name, variable_name, new_value)
-            return jsonify({"response": result})
+    # Check if the response is a simple message
+    if "FETCH RECORD" not in claude_response and "UPDATE RECORD" not in claude_response:
+        # Return the response as is
+        return jsonify({"extracted_text": claude_response})
 
-    response_text, conversation_history = get_response(user_input, conversation_history)
-    return jsonify({"response": response_text})
 
-def read_files_from_database(collection):
-    aggregated_text = ""
-    cursor = collection.find({}, {"content": 1, "_id": 0})
-    for doc in cursor:
-        file_content = doc.get("content", "")
-        aggregated_text += str(file_content) + "\n"  # Add file content to aggregated text
-    return aggregated_text.strip()  # Remove trailing newline if exists
+    # Handle specific actions
+    results = []
+    words = []
+
+    # Split response by space and process each word, treating words enclosed in * as single words
+    pattern = re.compile(r'\*(.*?)\*|(\S+)')
+    words = [match.group(1) or match.group(2) for match in pattern.finditer(claude_response)]
+
+    print(f"Words extracted: {words}")  # Debug: Print extracted words
+
+    i = 0
+    while i < len(words):
+        action = words[i].strip()
+        print(f"Action: {action}")  # Debug: Print current action
+        i += 1
+        if i < len(words):
+            args = words[i].strip()
+            print(f"Args: {args}")  # Debug: Print current arguments
+            if action == 'FETCH' and (args == 'RECORD' or not args):
+                # Handle FETCH RECORD if needed
+                result = claude_response
+                results.append(result)
+            elif action == 'UPDATE' and args == 'RECORD':
+                print("In UPDATE RECORD block")  # Debug: Print update record block entry
+                if i + 2 < len(words):  # Check if there are enough words
+                    file_name = words[i+1]
+                    variable_name = words[i + 2]
+                    new_value = ' '.join(words[i + 3:])
+                    print(f"File name: {file_name}")  # Debug: Print file name
+                    print(f"Variable name: {variable_name}")  # Debug: Print variable name
+                    print(f"New value: {new_value}")  # Debug: Print new value
+
+                    # Call update_record function
+                    result = update_record(db, file_name, variable_name, new_value)
+
+                    results.append(result)
+                    i += 3 + len(new_value.split())  # Move to the next action
+                else:
+                    result = 'Invalid arguments for UPDATE RECORD'
+                    results.append(result)
+                    i += 3  # Move to the next action even if it's invalid
+            elif action == 'ADD' and args == 'RECORD':
+                pass  # Handle ADD RECORD similarly
+            elif action == 'ADD' and args == 'ALERT':
+                pass  # Handle ADD ALERT similarly
+            elif action == 'EXECUTE' and args == 'ALERT':
+                pass  # Handle EXECUTE ALERT similarly
+            else:
+                pass
+        i += 1
+
+    # Prepare response
+    response_text = '\n'.join(results)
+    response_json = {"extracted_text": response_text}
+    return jsonify(response_json)
+
+
+import re
 
 def update_record(db, file_name, variable_name, new_value):
     collection = db[MONGODB_COLLECTION_NAME]
@@ -280,15 +306,17 @@ def update_record(db, file_name, variable_name, new_value):
         {"_id": doc["_id"]},
         {"$set": {"content": new_content}}
     )
+  
+
 
     # Update the aggregate text after updating the document
     update_aggregate_text()
 
     return f"Updated {file_name}: {variable_name} set to {new_value}, Previous {variable_name} = \"{old_value}\""
 
-def update_aggregate_text():
-    aggregated_text = read_files_from_database(collection)
-    return aggregated_text
+
+
+
 
 if __name__ == '__main__':
     app.run(debug=True)
