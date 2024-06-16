@@ -1,35 +1,89 @@
+
 import requests
 from flask import Flask, request, jsonify, render_template
 import pymongo
 import openai
 import re
+import sys
 import os
-from pymongo import MongoClient
+from pymongo import MongoClient  # Ensure this import is present
+from pymongo.errors import ServerSelectionTimeoutError
 from flask_cors import CORS
 
-app = Flask(__name__)
-CORS(app)
 
-# MongoDB connection details
+app = Flask(__name__)
+CORS(app) 
 MONGODB_URI = "mongodb+srv://kanchang12:Ob3uROyf8rtbEOwx@cluster0.sle630c.mongodb.net/upwrok?retryWrites=true&w=majority&ssl=true"
 MONGODB_DB_NAME = "upwrok"
 MONGODB_COLLECTION_NAME = "files"
 
-# Initialize MongoDB client
-client1 = MongoClient(MONGODB_URI)
+# Initialize MongoDB client with SSL parameters
+client1 = MongoClient(MONGODB_URI)  # Use 'CERT_REQUIRED' for stricter verification
 db = client1.get_database(MONGODB_DB_NAME)
 collection = db.get_collection(MONGODB_COLLECTION_NAME)
+
+def read_files_from_database(collection):
+    aggregated_text = ""
+    cursor = collection.find({}, {"content": 1, "_id": 0})
+    for doc in cursor:
+        file_content = doc.get("content", "")
+        aggregated_text += str(file_content) + "\n"  # Add file content to aggregated text
+    return aggregated_text.strip()  # Remove trailing newline if exists
+
+def update_aggregate_text():
+    aggregated_text = read_files_from_database(collection)
+    return aggregated_text
 
 @app.route('/')
 def index():
     return render_template('index.html')
 
-# OpenAI API key
+# Ensure the API key is correctly fetched
 openai_api_key = os.getenv("OPENAI_API_KEY")
+if not openai_api_key:
+    raise ValueError("OPENAI_API_KEY environment variable not set.")
+
+client = openai.Client(api_key=openai_api_key)
+
+# Initialize OpenAI client
 openai.api_key = openai_api_key
 
-conversation_history = """
-Purpose:
+# Initial conversation history
+conversation_history = ""
+
+def get_response(user_input, conversation_history):
+    messages = [
+        {"role": "system", "content": conversation_history},
+        {"role": "user", "content": user_input}
+    ]
+
+    try:
+        response = client.chat.completions.create(
+            model="gpt-3.5-turbo-16k",
+            messages=messages,
+            temperature=1,
+            max_tokens=2560,
+            top_p=1,
+            frequency_penalty=0.9
+        )
+
+        generated_text = response.choices[0].message['content']
+        print("Generated text:", generated_text)
+
+        # Update conversation history
+        conversation_history += f"\nUser: {user_input}\nAssistant: {generated_text}"
+        return generated_text, conversation_history
+
+    except Exception as e:
+        print(f"Error in get_response: {e}")
+        return "Error generating response", conversation_history
+
+def get_claude_response(user_input):
+    global conversation_history
+    aggregated_text = update_aggregate_text()
+
+    system_instructions = f"""
+    Purpose:
     Your primary goal is to provide accurate, concise responses to assist the business owner. You will use the data in the variable {aggregated_text} and, if needed, refer to your public training data.
 
     General Rules:
@@ -165,67 +219,103 @@ Purpose:
 
     User: "How far is the Brick property from the airport?"
     Chatbot: "The Brick property is X miles from the nearest airport."
-"""
+    """
 
-def search_database(query):
-    """Search the MongoDB database for the query and return relevant results."""
-    search_results = []
-    cursor = collection.find({"content": {"$regex": re.escape(query), "$options": "i"}})
-    for doc in cursor:
-        search_results.append(doc.get("content", ""))
-    return search_results
+    # Update conversation history with new instructions
+    conversation_history = f"{conversation_history}\n{system_instructions}"
 
-def get_response(user_input, conversation_history):
-    try:
-        # Search the database for the user query
-        search_results = search_database(user_input)
-        
-        # If no search results are found, handle it gracefully
-        if not search_results:
-            search_response = "No relevant information found in the database."
-        else:
-            # Format the search results
-            search_response = "\n".join(search_results)
-        
-        # Generate response using OpenAI GPT
-        messages = [
-            {"role": "system", "content": conversation_history},
-            {"role": "user", "content": user_input},
-            {"role": "system", "content": f"Search results: {search_response}"}
-        ]
+    generated_text, conversation_history = get_response(user_input, conversation_history)
+    
+    return generated_text, conversation_history
 
-        response = openai.ChatCompletion.create(
-            model="gpt-3.5-turbo-16k",
-            messages=messages,
-            temperature=1,
-            max_tokens=2560,
-            top_p=1,
-            frequency_penalty=0.9
-        )
+def find_best_match(partial_name, valid_names):
+    for name in valid_names:
+        if partial_name in name:
+            return name
+    return " "
 
-        generated_text = response.choices[0].message['content']
-        
-        # Update conversation history
-        conversation_history += f"\nUser: {user_input}\nAssistant: {generated_text}"
-        
-        return generated_text, conversation_history
-    except Exception as e:
-        return f"Error in get_response: {str(e)}", conversation_history
-
-@app.route('/process_command', methods=['GET','POST'])
+@app.route('/process_command', methods=['GET', 'POST'])
 def process_command():
-    global conversation_history
-    if request.content_type == 'application/json':
-        user_input = request.json.get("user_input")
-    elif request.content_type == 'application/x-www-form-urlencoded':
-        user_input = request.form.get("user_input")
-    else:
-        return jsonify({"error": "Unsupported Media Type. Content-Type must be application/json or application/x-www-form-urlencoded"}), 415
+    user_input = request.json.get('user_input')
 
-    if not user_input:
-        return jsonify({"response": "No user input provided."}), 400
+    # Get response from OpenAI based on aggregated text
+    claude_response, conversation_history = get_claude_response(user_input)
 
-    response_text, conversation_history = get_response(user_input, conversation_history)
-    return jsonify({"response": response_text})
+    # Check if the response is a simple message
+    if "FETCH RECORD" not in claude_response and "UPDATE RECORD" not in claude_response:
+        return jsonify({"extracted_text": claude_response})
+
+    # Handle specific actions
+    results = []
+    words = []
+
+    pattern = re.compile(r'\*(.*?)\*|(\S+)')
+    words = [match.group(1) or match.group(2) for match in pattern.finditer(claude_response)]
+
+    print(f"Words extracted: {words}")
+
+    i = 0
+    while i < len(words):
+        action = words[i].strip()
+        i += 1
+        if i < len(words):
+            args = words[i].strip()
+            if action == 'FETCH' and (args == 'RECORD' or not args):
+                result = claude_response
+                results.append(result)
+            elif action == 'UPDATE' and args == 'RECORD':
+                if i + 2 < len(words):
+                    file_name = words[i + 1]
+                    variable_name = words[i + 2]
+                    new_value = ' '.join(words[i + 3:])
+                    result = update_record(db, file_name, variable_name, new_value)
+                    results.append(result)
+                    i += 3 + len(new_value.split())
+                else:
+                    result = 'Invalid arguments for UPDATE RECORD'
+                    results.append(result)
+                    i += 3
+            elif action == 'ADD' and args == 'RECORD':
+                pass  # Handle ADD RECORD similarly
+            elif action == 'ADD' and args == 'ALERT':
+                pass  # Handle ADD ALERT similarly
+            elif action == 'EXECUTE' and args == 'ALERT':
+                pass  # Handle EXECUTE ALERT similarly
+            else:
+                pass
+        i += 1
+
+    response_text = '\n'.join(results)
+    response_json = {"extracted_text": response_text}
+    return jsonify(response_json)
+
+def update_record(db, file_name, variable_name, new_value):
+    collection = db[MONGODB_COLLECTION_NAME]
+    doc = collection.find_one({"filename": file_name})
+    if not doc:
+        return f"File {file_name} not found in the database"
+
+    content = doc.get("content", "")
+    lines = str(content).split("\n")
+    updated_lines = []
+    matched_variable = None
+    for line in lines:
+        if variable_name.lower() in line.lower():
+            matched_variable = line.split(":")[0].strip()
+            old_value = line.split(":")[1].strip()
+            new_line = f"{matched_variable}: {new_value}\nPrevious Value: {old_value}"
+            updated_lines.append(new_line)
+        else:
+            updated_lines.append(line)
+
+    if matched_variable is None:
+        return f"Variable {variable_name} not found in file {file_name}"
+
+    new_content = "\n".join(updated_lines)
+    collection.update_one({"_id": doc["_id"]}, {"$set": {"content": new_content}})
+    update_aggregate_text()
+
+    return f"Updated {file_name}: {variable_name} set to {new_value}, Previous {variable_name} = \"{old_value}\""
+
 if __name__ == '__main__':
-    app.run(host='0.0.0.0', port=8000)
+    app.run(debug=True)
