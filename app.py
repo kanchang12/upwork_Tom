@@ -192,8 +192,8 @@ Purpose:
     User: "How far is the Brick property from the airport?"
     Chatbot: "The Brick property is X miles from the nearest airport."
     """
-
-   message = openai.ChatCompletion.create(
+    
+    message = openai.ChatCompletion.create(
     model="gpt-3.5-turbo-16k",
     messages=[
         {"role": "system", "content": system_instructions},
@@ -203,7 +203,7 @@ Purpose:
     max_tokens=2560,
     top_p=1,
     frequency_penalty=0.9
-)
+   )
     generated_text = message.choices[0].message.content
     print("1", generated_text)
     return generated_text
