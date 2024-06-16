@@ -20,6 +20,10 @@ client1 = MongoClient(MONGODB_URI)
 db = client1.get_database(MONGODB_DB_NAME)
 collection = db.get_collection(MONGODB_COLLECTION_NAME)
 
+@app.route('/')
+def index():
+    return render_template('index.html')
+
 # OpenAI API key
 openai_api_key = os.getenv("OPENAI_API_KEY")
 openai.api_key = openai_api_key
@@ -124,7 +128,7 @@ Purpose:
     User: "Change the employee in Brick property to Tom."
     Chatbot: "Do you mean the employee name?"
     User: "Yes, change the employee name to Tom."
-    Chatbot: "Do you want to update the employee name for Brick property?"
+    Chatbot: "Do you want to update the employee name for Brick property
     Correct Approach:
 
     User: "Change the employee in Brick property to Tom."
