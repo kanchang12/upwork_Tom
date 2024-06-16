@@ -170,6 +170,21 @@
         }
     }
 
+      document.getElementById('queryForm').onsubmit = function(event) {
+        event.preventDefault();
+        const formData = new FormData(this);
+        fetch('/process_command', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/x-www-form-urlencoded'
+            },
+            body: new URLSearchParams(formData).toString()
+        })
+        .then(response => response.json())
+        .then(data => console.log(data))
+        .catch(error => console.error('Error:', error));
+    };
+
             // Function to send a message
             function sendMessage() {
                 var userInput = document.getElementById("messageInput").value;
