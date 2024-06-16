@@ -167,6 +167,13 @@ Purpose:
     Chatbot: "The Brick property is X miles from the nearest airport."
 """
 
+def read_files_from_database(collection):
+    """Reads all the text from the files stored in the database and aggregates it."""
+    aggregated_text = ""
+    for document in collection.find():
+        aggregated_text += document.get("content", "") + "\n"
+    return aggregated_text
+
 def search_database(query):
     """Search the MongoDB database for the query and return relevant results."""
     search_results = []
@@ -242,13 +249,37 @@ def process_command():
         words = user_input.split()
         if len(words) >= 4:
             file_name = words[2]
-            variable_name = words[3][1:-1]  # Remove '*' characters
+            variable_name = words[3].strip('*')
             new_value = ' '.join(words[4:])
-            result = update_record(db, file_name, variable_name, new_value)
-            return jsonify({"response": result})
+            result = collection.update_one(
+                {"filename": file_name},
+                {"$set": {variable_name: new_value}}
+            )
+            if result.modified_count > 0:
+                return jsonify({"response": f"Record updated successfully: {file_name} {variable_name} = {new_value}"})
+            else:
+                return jsonify({"response": "No matching record found to update."})
+        else:
+            return jsonify({"response": "Invalid update command format."})
 
     response_text, conversation_history = get_response(user_input, conversation_history)
     return jsonify({"response": response_text})
+
+@app.route('/aggregate_data', methods=['GET'])
+def aggregate_data():
+    try:
+        aggregated_text = read_files_from_database(collection)
+        return jsonify({"message": "Data aggregated successfully.", "aggregated_text": aggregated_text})
+    except Exception as e:
+        return jsonify({"message": f"Error during aggregation: {str(e)}"}), 500
+
+@app.route('/regenerate_token_background', methods=['POST'])
+def regenerate_token_background():
+    try:
+        # Logic to regenerate the token
+        return jsonify({"message": "Token regenerated successfully."})
+    except Exception as e:
+        return jsonify({"message": f"Error regenerating token: {str(e)}"}), 500
 
 if __name__ == '__main__':
     app.run(debug=True)
