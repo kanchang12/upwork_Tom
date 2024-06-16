@@ -46,7 +46,7 @@ def index():
 
 
 openai_api_key = os.getenv("OPENAI_API_KEY")
-client = openai.Client(api_key=openai_api_key)
+openai.api_key = openai_api_key
 
 
 
@@ -203,7 +203,9 @@ Purpose:
     max_tokens=2560,
     top_p=1,
     frequency_penalty=0.9
-   )
+    
+    )
+    
     generated_text = message.choices[0].message.content
     print("1", generated_text)
     return generated_text
