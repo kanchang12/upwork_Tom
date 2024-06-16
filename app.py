@@ -55,7 +55,7 @@ def get_response(user_input, conversation_history):
     ]
 
     try:
-        response = openai.ChatCompletion.create(
+        response = client.chat.completions.create(
             model="gpt-3.5-turbo-16k",
             messages=messages,
             temperature=1,
