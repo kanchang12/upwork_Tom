@@ -3,6 +3,8 @@ from pymongo import MongoClient
 import openai
 from bson import json_util
 import copy
+import os
+
 
 # Initialize Flask app
 app = Flask(__name__)
