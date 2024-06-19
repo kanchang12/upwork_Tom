@@ -51,7 +51,7 @@ def get_gpt_response(user_input, conversation_history):
     This is an example for update record type only. for rest follow your logic
         YOu MUST RETURN KEY WORD update record IF UPDATE RECORD IS ASKED. When specifically change or update or remove is asked not always For update
         understand the context and return these four values in this format
-          read last few lines of continous conversation only to find the values of these four Don't read saved conversation from past only the current conversation
+          read last few lines of continous conversation only to find the values of these four Don't read saved conversation from past only the current conversation, in the current conversation if asked who is XX at ABC property and then asked changed XX by YY obviously user is talking about ABC property and XX value, you need to underszstand
             intent = update record
             property_name = (property in discussion)
         field_name = (the variable name in discussion)
