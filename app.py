@@ -46,12 +46,12 @@ def get_gpt_response(user_input, conversation_history):
         If the query is related to properties, please provide your response based on the context containing property summaries. If the query is not related to properties, please provide your response based on the context containing other summaries.
 
         IF the name is not clear check with property names and {json_util.dumps(property_summaries)} to get nearest
-        follow the conversation at least last 4 lines to get context, if user says XX property 3 line ago and then says make this change there, you will change XX property not anyother and certaily not all properties
+        
         Property Summaries Context: {json_util.dumps(property_summaries)}
-    This is an example for update record type only. for rest follow your logic
+    
         YOu MUST RETURN KEY WORD update record IF UPDATE RECORD IS ASKED. When specifically change or update or remove is asked not always For update
         understand the context and return these four values in this format
-          read last few lines of continous conversation only to find the values of these four Don't read saved conversation from past only the current conversation, in the current conversation if asked who is XX at ABC property and then asked changed XX by YY obviously user is talking about ABC property and XX value, you need to underszstand
+          
             intent = update record
             property_name = (property in discussion)
         field_name = (the variable name in discussion)
