@@ -46,7 +46,7 @@ def get_gpt_response(user_input, conversation_history):
         If the query is related to properties, please provide your response based on the context containing property summaries. If the query is not related to properties, please provide your response based on the context containing other summaries.
 
         IF the name is not clear check with property names and {json_util.dumps(property_summaries)} to get nearest
-        follow the conversation at least last 4 lines to get context
+        follow the conversation at least last 4 lines to get context, if user says XX property 3 line ago and then says make this change there, you will change XX property not anyother and certaily not all properties
         Property Summaries Context: {json_util.dumps(property_summaries)}
     This is an example for update record type only. for rest follow your logic
         YOu MUST RETURN KEY WORD update record IF UPDATE RECORD IS ASKED. When specifically change or update or remove is asked not always For update
